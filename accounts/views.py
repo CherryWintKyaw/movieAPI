@@ -200,3 +200,26 @@ def delete_user(request, pk):
         {"message": f"User '{user.username}' has been deleted successfully."}, 
         status=status.HTTP_200_OK
     )
+
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser]) # Admin/Staff သာလျှင် ခေါ်ယူနိုင်သည်
+def delete_all_users(request):
+    """
+    User အားလုံးကို တစ်ပြိုင်နက် ဖျက်သိမ်းရန် (Admin Only)
+    မှတ်ချက် - လက်ရှိ Login ဝင်ထားသော Admin မိမိကိုယ်တိုင်ကိုတော့ မဖျက်မိအောင် ချန်လှပ်ထားပါမည်။
+    """
+    # လက်ရှိ Admin ကလွဲပြီး ကျန်တဲ့ User တွေကို စစ်ထုတ်မယ်
+    users_to_delete = User.objects.exclude(id=request.user.id)
+    
+    count = users_to_delete.count()
+    
+    if count == 0:
+        return Response({"message": "No users to delete."}, status=status.HTTP_200_OK)
+
+    # အကုန်လုံးကို တစ်ခါတည်း ဖျက်မည်
+    users_to_delete.delete()
+
+    return Response({
+        "message": f"Successfully deleted {count} users.",
+        "note": "Active admin account was not deleted."
+    }, status=status.HTTP_200_OK)
