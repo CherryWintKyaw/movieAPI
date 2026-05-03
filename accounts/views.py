@@ -110,7 +110,7 @@ def get_all_users(request):
     
     # Pagination configuration
     paginator = PageNumberPagination()
-    paginator.page_size = 2 # တစ်မျက်နှာမှာ user ၁၀ ယောက်စီ ပြမယ်
+    paginator.page_size = 3 # တစ်မျက်နှာမှာ user ၁၀ ယောက်စီ ပြမယ်
     
     result_page = paginator.paginate_queryset(users, request)
     serializer = UserListSerializer(result_page, many=True)
@@ -173,3 +173,30 @@ def update_user(request, pk):
 
     # ၄။ Validation error ရှိရင် (ဥပမာ username တူနေတာမျိုး) error ပြန်မယ်
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_user(request, pk):
+    """
+    User အကောင့်အား ဖျက်သိမ်းရန် Function
+    URL: /api/accounts/users_delete/<uuid:pk>/
+    """
+    # ၁။ ဖျက်ချင်တဲ့ User ကို ရှာမယ်
+    user = get_object_or_404(User, pk=pk)
+
+    # ၂။ Security Check: 
+    # Admin မဟုတ်လျှင် မိမိအကောင့်မှလွဲ၍ အခြားသူ၏အကောင့်ကို ဖျက်ခွင့်မပြုပါ
+    if not request.user.is_staff and request.user.id != user.id:
+        return Response(
+            {"error": "You do not have permission to delete this user."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # ၃။ Database ထဲမှ ဖျက်ထုတ်ခြင်း
+    user.delete()
+
+    # ၄။ အောင်မြင်ကြောင်း message ပြန်မယ် (204 No Content သို့မဟုတ် 200 OK)
+    return Response(
+        {"message": f"User '{user.username}' has been deleted successfully."}, 
+        status=status.HTTP_200_OK
+    )
