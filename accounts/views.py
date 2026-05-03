@@ -142,3 +142,34 @@ def get_user_detail(request, pk):
     # ၄။ Serializer သုံးပြီး Data ကို JSON ပုံစံပြောင်းပြီး Return ပြန်မယ်
     serializer = UserDetailSerializer(user)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['PATCH', 'PUT'])
+@permission_classes([IsAuthenticated])
+def update_user(request, pk):
+    """
+    User အချက်အလက်များကို သီးသန့် Update လုပ်ရန် Function
+    URL: /api/accounts/users_update/<uuid:pk>/
+    """
+    # ၁။ ပြင်ချင်တဲ့ User ကို ရှာမယ်
+    user = get_object_or_404(User, pk=pk)
+
+    # ၂။ Security Check: Admin မဟုတ်ရင် မိမိအကောင့်ကလွဲပြီး သူများအကောင့် ပြင်ခွင့်မရှိစေရ
+    if not request.user.is_staff and request.user.id != user.id:
+        return Response(
+            {"error": "You do not have permission to update this user's data."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # ၃။ Serializer ထဲသို့ data များထည့်ပြီး စစ်ဆေးမယ်
+    # partial=True ကြောင့် field အကုန်လုံးပို့စရာမလိုဘဲ ပြင်ချင်တာပဲ ပို့လို့ရပါတယ်
+    serializer = UserDetailSerializer(user, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            "message": "User updated successfully",
+            "user": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    # ၄။ Validation error ရှိရင် (ဥပမာ username တူနေတာမျိုး) error ပြန်မယ်
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
