@@ -9,18 +9,28 @@ from .serializers import RegisterSerializer, UserListSerializer, UserDetailSeria
 from .models import User
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group
 
 def get_tokens_for_user(user):
+    """
+    User တစ်ယောက်အတွက် Access/Refresh Tokens ထုတ်ပေးပြီး 
+    User ရဲ့ Groups နှင့် Permissions အားလုံးကိုပါ Response မှာ ထည့်ပေးခြင်း
+    """
     refresh = RefreshToken.for_user(user)
-    # User ရဲ့ Permission List ကိုပါ Token Response မှာ ထည့်ပေးရန်
-    permissions = []
-    if user.has_role_perm("can_manage_shops"): permissions.append("can_manage_shops")
-    if user.has_role_perm("can_access_premium_content"): permissions.append("can_access_premium_content")
+    
+    # User ရဲ့ Direct Permissions ရော Group ကရတဲ့ Permissions ပါ အကုန်ယူခြင်း
+    all_perms = list(user.get_all_permissions())
+    groups = [group.name for group in user.groups.all()]
     
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
-        'permissions': permissions # Frontend အတွက် အသုံးဝင်သည်
+        'user_details': {
+            'groups': groups,
+            'permissions': all_perms,
+            'role': user.role,
+            'is_premium': user.is_premium
+        }
     }
 
 # --- 1. Register User ---
@@ -243,3 +253,10 @@ def get_all_permissions(request):
     """Django System တစ်ခုလုံးရှိ Permissions စာရင်းကို ပြရန်"""
     perms = Permission.objects.all().values('id', 'name', 'codename')
     return Response(perms)
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def get_all_groups(request):
+    """System ထဲမှာရှိတဲ့ Groups စာရင်းကို ID နှင့် Name ပြရန်"""
+    groups = Group.objects.all().values('id', 'name')
+    return Response(groups)

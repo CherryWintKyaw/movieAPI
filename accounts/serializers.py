@@ -3,6 +3,21 @@ from .models import User
 from django.contrib.auth.models import Permission
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+def get_permissions_object_list(permissions_queryset):
+    return [
+        {"id": p.id, "name": p.name, "codename": p.codename} 
+        for p in permissions_queryset
+    ]
+
+def get_groups_object_list(groups_queryset):
+    return [
+        {
+            "id": g.id, 
+            "name": g.name, 
+            "permissions": get_permissions_object_list(g.permissions.all())
+        } 
+        for g in groups_queryset
+    ]
 # --- 1. Register Serializer ---
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -104,3 +119,4 @@ class UserDetailSerializer(serializers.ModelSerializer):
             instance.user_permissions.set(permissions_data)
             
         return instance
+    
