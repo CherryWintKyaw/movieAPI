@@ -34,3 +34,26 @@ class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'role', 'is_premium', 'premium_expiry']    
+
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    # DateTimeField တွေကို format ပြင်လိုက်တာပါ
+    # %d/%m/%Y = 03/05/2026
+    # %I:%M%p = 01:30PM
+    date_joined = serializers.DateTimeField(format="%d/%m/%Y %I:%M%p", read_only=True)
+    premium_expiry = serializers.DateTimeField(format="%d/%m/%Y %I:%M%p", read_only=True)
+    class Meta:
+        model = User
+        fields = [
+            'id', 
+            'username', 
+            'email', 
+            'role', 
+            'is_premium', 
+            'premium_expiry', 
+            'date_joined', 
+            'is_active'
+        ]
+        # ID, Email နဲ့ join တဲ့ရက်စွဲတွေကို ပြင်ခွင့်မပေးဘဲ Read Only ထားပါမယ်
+        read_only_fields = ['id', 'email', 'date_joined']

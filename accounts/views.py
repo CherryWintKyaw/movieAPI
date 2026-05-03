@@ -5,8 +5,9 @@ from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .serializers import RegisterSerializer, UserListSerializer
+from .serializers import RegisterSerializer, UserListSerializer, UserDetailSerializer
 from .models import User
+from django.shortcuts import get_object_or_404
 
 def get_tokens_for_user(user):
     """
@@ -115,3 +116,29 @@ def get_all_users(request):
     serializer = UserListSerializer(result_page, many=True)
     
     return paginator.get_paginated_response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_detail(request, pk):
+    """
+    User တစ်ယောက်ချင်းစီ၏ Detail (အချက်အလက်) ကို ကြည့်ရှုရန်သာ
+    URL: /api/accounts/users/<uuid:pk>/
+    """
+    
+    # ၁။ URL ထဲကပါလာတဲ့ ID (pk) နဲ့ User ကို ရှာမယ်
+    user = get_object_or_404(User, pk=pk)
+
+    # ၂။ လုံခြုံရေး စစ်ဆေးချက်: 
+    # Admin မဟုတ်ရင် မိမိ ID မဟုတ်တဲ့ တခြားသူရဲ့ data ကို ကြည့်ခွင့်မပေးဘူး
+    if not request.user.is_staff and request.user.id != user.id:
+        return Response(
+            {"error": "You do not have permission to view this user's data."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # ၃။ Premium သက်တမ်း ကုန်/မကုန် Model ထဲက function နဲ့ စစ်မယ်
+    user.check_premium_status()
+
+    # ၄။ Serializer သုံးပြီး Data ကို JSON ပုံစံပြောင်းပြီး Return ပြန်မယ်
+    serializer = UserDetailSerializer(user)
+    return Response(serializer.data, status=status.HTTP_200_OK)
