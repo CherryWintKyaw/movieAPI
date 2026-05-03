@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import User
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Permission, Group
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 def get_permissions_object_list(permissions_queryset):
@@ -56,6 +56,11 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 # --- 3. User List Serializer ---
 class UserListSerializer(serializers.ModelSerializer):
+    # Groups ကို ID list အနေနဲ့ လက်ခံဖို့ (သို့မဟုတ်) ပို့ပေးဖို့ သတ်မှတ်ခြင်း
+    groups = serializers.PrimaryKeyRelatedField(
+        queryset=Group.objects.all(),
+        many=True
+    )
     user_permissions = serializers.PrimaryKeyRelatedField(
         queryset=Permission.objects.all(),
         many=True
@@ -64,23 +69,39 @@ class UserListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'role', 'is_premium', 'premium_expiry', 'user_permissions']
+        # fields ထဲမှာ 'groups' ကို ထည့်ပါ
+        fields = ['id', 'username', 'email', 'role', 'is_premium', 'premium_expiry', 'groups', 'user_permissions']
 
     def to_representation(self, instance):
-        """Response ပြန်ခါနီးမှ ID list ကို Object list အဖြစ် ပြောင်းလဲပေးခြင်း"""
+        """Response ပြန်တဲ့အခါ Groups နဲ့ Permissions ကို Object list ပုံစံပြောင်းခြင်း"""
         representation = super().to_representation(instance)
+        
+        # Groups ကို Object ပုံစံပြောင်းရန်
+        representation['groups'] = [
+            {"id": g.id, "name": g.name} 
+            for g in instance.groups.all()
+        ]
+        
+        # Permissions ကို Object ပုံစံပြောင်းရန်
         representation['user_permissions'] = [
             {"id": p.id, "name": p.name, "codename": p.codename} 
             for p in instance.user_permissions.all()
         ]
+        
         return representation
-
-# --- 4. User Detail & Update Serializer ---
+    
+    
 class UserDetailSerializer(serializers.ModelSerializer):
     date_joined = serializers.DateTimeField(format="%d/%m/%Y %I:%M%p", read_only=True)
     premium_expiry = serializers.DateTimeField(format="%d/%m/%Y %I:%M%p", read_only=True)
     
-    # Update အတွက် ID list ကို လက်ခံရန်
+    # Groups update လုပ်ရန် ID list လက်ခံမည်
+    groups = serializers.PrimaryKeyRelatedField(
+        queryset=Group.objects.all(),
+        many=True,
+        required=False
+    )
+    
     user_permissions = serializers.PrimaryKeyRelatedField(
         queryset=Permission.objects.all(),
         many=True,
@@ -92,13 +113,18 @@ class UserDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'role', 
             'is_premium', 'premium_expiry', 'date_joined', 
-            'is_active', 'user_permissions'
+            'is_active', 'groups', 'user_permissions'
         ]
         read_only_fields = ['id', 'email', 'date_joined']
 
     def to_representation(self, instance):
-        """GET request သို့မဟုတ် Update ပြီးနောက် ပြန်ပြမည့် JSON ကို Object ပုံစံပြောင်းခြင်း"""
         representation = super().to_representation(instance)
+        # Group များကို Object ပုံစံဖြင့် ပြန်ပြရန်
+        representation['groups'] = [
+            {"id": g.id, "name": g.name} 
+            for g in instance.groups.all()
+        ]
+        # Permission များကို Object ပုံစံဖြင့် ပြန်ပြရန်
         representation['user_permissions'] = [
             {"id": p.id, "name": p.name, "codename": p.codename} 
             for p in instance.user_permissions.all()
@@ -106,17 +132,41 @@ class UserDetailSerializer(serializers.ModelSerializer):
         return representation
 
     def update(self, instance, validated_data):
-        # user_permissions data ကို ယူပြီး handle လုပ်ခြင်း
+        # Data များကို pop လုပ်ယူခြင်း
+        groups_data = validated_data.pop('groups', None)
         permissions_data = validated_data.pop('user_permissions', None)
         
-        # အခြား field များကို ပုံမှန်အတိုင်း update လုပ်ခြင်း
+        # ပုံမှန် field များကို update လုပ်ခြင်း
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Permission များကို Many-to-Many relationship အနေဖြင့် သိမ်းဆည်းခြင်း
+        # Many-to-Many field များကို update လုပ်ခြင်း
+        if groups_data is not None:
+            instance.groups.set(groups_data)
+        
         if permissions_data is not None:
             instance.user_permissions.set(permissions_data)
             
         return instance
     
+class GroupSerializer(serializers.ModelSerializer):
+    # Group ဆောက်တဲ့အခါ/ပြင်တဲ့အခါ Permission IDs list ပို့ပေးရန်
+    permissions = serializers.PrimaryKeyRelatedField(
+        many=True, 
+        queryset=Permission.objects.all(), 
+        required=False
+    )
+
+    class Meta:
+        model = Group
+        fields = ['id', 'name', 'permissions']
+
+    def to_representation(self, instance):
+        """Data ပြန်ပြတဲ့အခါ Permission ID သက်သက်မဟုတ်ဘဲ Detail ပါပြရန်"""
+        representation = super().to_representation(instance)
+        representation['permissions'] = [
+            {"id": p.id, "name": p.name, "codename": p.codename} 
+            for p in instance.permissions.all()
+        ]
+        return representation

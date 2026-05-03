@@ -10,6 +10,7 @@ from .models import User
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import Group
+from .serializers import GroupSerializer
 
 def get_tokens_for_user(user):
     """
@@ -117,17 +118,16 @@ def logout_user(request):
 # --- New: User List with Pagination ---
 # --- 4. Get All Users (Admin Only) ---
 @api_view(['GET'])
-@permission_classes([IsAdminUser]) # Admin တွေပဲ ကြည့်ခွင့်ပေးထားတာပါ
+@permission_classes([IsAdminUser])
 def get_all_users(request):
     """
-    User အားလုံးကို Pagination ဖြင့် ပြသခြင်း
-    URL: /api/accounts/users/?page=1
+    User အားလုံးကို Pagination ဖြင့် ပြသခြင်း (Groups ပါဝင်သည်)
     """
-    users = User.objects.all().order_by('-date_joined')
+    # prefetch_related သုံးခြင်းဖြင့် Database query ပိုနည်းပြီး ပိုမြန်စေသည်
+    users = User.objects.all().prefetch_related('groups', 'user_permissions').order_by('-date_joined')
     
-    # Pagination configuration
     paginator = PageNumberPagination()
-    paginator.page_size = 3 # တစ်မျက်နှာမှာ user ၁၀ ယောက်စီ ပြမယ်
+    paginator.page_size = 10 # တစ်မျက်နှာမှာ user ၁၀ ယောက်စီ ပြမယ် (ဥပမာ)
     
     result_page = paginator.paginate_queryset(users, request)
     serializer = UserListSerializer(result_page, many=True)
@@ -165,22 +165,22 @@ def get_user_detail(request, pk):
 @api_view(['PATCH', 'PUT'])
 @permission_classes([IsAuthenticated])
 def update_user(request, pk):
-    """
-    User အချက်အလက်များကို သီးသန့် Update လုပ်ရန် Function
-    URL: /api/accounts/users_update/<uuid:pk>/
-    """
-    # ၁။ ပြင်ချင်တဲ့ User ကို ရှာမယ်
     user = get_object_or_404(User, pk=pk)
 
-    # ၂။ Security Check: Admin မဟုတ်ရင် မိမိအကောင့်ကလွဲပြီး သူများအကောင့် ပြင်ခွင့်မရှိစေရ
+    # Security: Admin မဟုတ်ရင် မိမိအကောင့်ကလွဲပြီး သူများအကောင့် ပြင်ခွင့်မရှိစေရ
     if not request.user.is_staff and request.user.id != user.id:
         return Response(
             {"error": "You do not have permission to update this user's data."}, 
             status=status.HTTP_403_FORBIDDEN
         )
 
-    # ၃။ Serializer ထဲသို့ data များထည့်ပြီး စစ်ဆေးမယ်
-    # partial=True ကြောင့် field အကုန်လုံးပို့စရာမလိုဘဲ ပြင်ချင်တာပဲ ပို့လို့ရပါတယ်
+    # Security: Group သို့မဟုတ် Permission ပြောင်းလဲရန် ကြိုးစားပါက Admin ဖြစ်မှသာ ခွင့်ပြုမည်
+    if ('groups' in request.data or 'user_permissions' in request.data) and not request.user.is_staff:
+        return Response(
+            {"error": "Only admins can modify groups or permissions."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     serializer = UserDetailSerializer(user, data=request.data, partial=True)
 
     if serializer.is_valid():
@@ -190,7 +190,6 @@ def update_user(request, pk):
             "user": serializer.data
         }, status=status.HTTP_200_OK)
 
-    # ၄။ Validation error ရှိရင် (ဥပမာ username တူနေတာမျိုး) error ပြန်မယ်
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # --- 7. Delete Single User ---
@@ -260,3 +259,55 @@ def get_all_groups(request):
     """System ထဲမှာရှိတဲ့ Groups စာရင်းကို ID နှင့် Name ပြရန်"""
     groups = Group.objects.all().values('id', 'name')
     return Response(groups)
+
+# --- 1. Create Group ---
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def group_create(request):
+    """Group အသစ်ဆောက်ရန်"""
+    serializer = GroupSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# --- 2. List & Detail Group ---
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def group_detail(request, pk):
+    """Group တစ်ခုချင်းစီ၏ အသေးစိတ်ကို ကြည့်ရန်"""
+    group = get_object_or_404(Group, pk=pk)
+    serializer = GroupSerializer(group)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+# --- 3. Update Group ---
+@api_view(['PATCH', 'PUT'])
+@permission_classes([IsAdminUser])
+def group_update(request, pk):
+    """Group အမည် သို့မဟုတ် Permission များကို ပြင်ရန်"""
+    group = get_object_or_404(Group, pk=pk)
+    serializer = GroupSerializer(group, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# --- 4. Delete Single Group ---
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def group_delete(request, pk):
+    """Group တစ်ခုတည်းကို ဖျက်ရန်"""
+    group = get_object_or_404(Group, pk=pk)
+    group.delete()
+    return Response({"message": "Group deleted successfully"}, status=status.HTTP_200_OK)
+
+# --- 5. Delete All Groups ---
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def group_delete_all(request):
+    """Group အားလုံးကို တစ်ခါတည်းဖျက်ရန်"""
+    groups = Group.objects.all()
+    count = groups.count()
+    groups.delete()
+    return Response({"message": f"Successfully deleted {count} groups."}, status=status.HTTP_200_OK)
+
