@@ -1,0 +1,31 @@
+from rest_framework import serializers
+from .models import User
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'confirm_password', 'role']
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('confirm_password')
+        return User.objects.create_user(**validated_data)
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['user'] = {
+            "id": str(self.user.id),
+            "username": self.user.username,
+            "email": self.user.email,
+            "is_premium": self.user.is_premium
+        }
+        return data
