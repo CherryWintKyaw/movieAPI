@@ -8,17 +8,22 @@ from django.contrib.auth import authenticate
 from .serializers import RegisterSerializer, UserListSerializer, UserDetailSerializer
 from .models import User
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import Permission
 
 def get_tokens_for_user(user):
-    """
-    User object တစ်ခုအတွက် Access နှင့် Refresh Token ကို manual ထုတ်ပေးသော function
-    """
     refresh = RefreshToken.for_user(user)
+    # User ရဲ့ Permission List ကိုပါ Token Response မှာ ထည့်ပေးရန်
+    permissions = []
+    if user.has_role_perm("can_manage_shops"): permissions.append("can_manage_shops")
+    if user.has_role_perm("can_access_premium_content"): permissions.append("can_access_premium_content")
+    
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
+        'permissions': permissions # Frontend အတွက် အသုံးဝင်သည်
     }
 
+# --- 1. Register User ---
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -41,6 +46,7 @@ def register_user(request):
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# --- 2. Login User ---
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_user(request):
@@ -79,6 +85,7 @@ def login_user(request):
     else:
         return Response({"error": "Invalid username/email or password"}, status=status.HTTP_401_UNAUTHORIZED)
 
+# --- 3. Logout User ---
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_user(request):
@@ -98,7 +105,7 @@ def logout_user(request):
     
 
 # --- New: User List with Pagination ---
-
+# --- 4. Get All Users (Admin Only) ---
 @api_view(['GET'])
 @permission_classes([IsAdminUser]) # Admin တွေပဲ ကြည့်ခွင့်ပေးထားတာပါ
 def get_all_users(request):
@@ -117,6 +124,7 @@ def get_all_users(request):
     
     return paginator.get_paginated_response(serializer.data)
 
+# --- 5. User Detail ---
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_detail(request, pk):
@@ -143,6 +151,7 @@ def get_user_detail(request, pk):
     serializer = UserDetailSerializer(user)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+# --- 6. Update User ---
 @api_view(['PATCH', 'PUT'])
 @permission_classes([IsAuthenticated])
 def update_user(request, pk):
@@ -174,6 +183,8 @@ def update_user(request, pk):
     # ၄။ Validation error ရှိရင် (ဥပမာ username တူနေတာမျိုး) error ပြန်မယ်
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# --- 7. Delete Single User ---
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_user(request, pk):
@@ -201,6 +212,8 @@ def delete_user(request, pk):
         status=status.HTTP_200_OK
     )
 
+# --- 8. Delete All Users (Admin Only) ---
+
 @api_view(['DELETE'])
 @permission_classes([IsAdminUser]) # Admin/Staff သာလျှင် ခေါ်ယူနိုင်သည်
 def delete_all_users(request):
@@ -223,3 +236,10 @@ def delete_all_users(request):
         "message": f"Successfully deleted {count} users.",
         "note": "Active admin account was not deleted."
     }, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def get_all_permissions(request):
+    """Django System တစ်ခုလုံးရှိ Permissions စာရင်းကို ပြရန်"""
+    perms = Permission.objects.all().values('id', 'name', 'codename')
+    return Response(perms)
