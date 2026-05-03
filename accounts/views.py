@@ -1,10 +1,12 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, UserListSerializer
+from .models import User
 
 def get_tokens_for_user(user):
     """
@@ -92,3 +94,24 @@ def logout_user(request):
         return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
     except Exception:
         return Response({"error": "Invalid token or already logged out"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+# --- New: User List with Pagination ---
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser]) # Admin တွေပဲ ကြည့်ခွင့်ပေးထားတာပါ
+def get_all_users(request):
+    """
+    User အားလုံးကို Pagination ဖြင့် ပြသခြင်း
+    URL: /api/accounts/users/?page=1
+    """
+    users = User.objects.all().order_by('-date_joined')
+    
+    # Pagination configuration
+    paginator = PageNumberPagination()
+    paginator.page_size = 2 # တစ်မျက်နှာမှာ user ၁၀ ယောက်စီ ပြမယ်
+    
+    result_page = paginator.paginate_queryset(users, request)
+    serializer = UserListSerializer(result_page, many=True)
+    
+    return paginator.get_paginated_response(serializer.data)

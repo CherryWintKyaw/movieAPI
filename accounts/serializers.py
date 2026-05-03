@@ -29,3 +29,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             "is_premium": self.user.is_premium
         }
         return data
+    
+class UserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'role', 'is_premium', 'premium_expiry']    
