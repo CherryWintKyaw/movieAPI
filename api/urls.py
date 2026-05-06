@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import banner_view, country_view, genre_view, director_view
+from .views import banner_view, country_view, genre_view, director_view, cast_view
 
 urlpatterns = [
     path('banner_list/', banner_view.banner_list, name='banner_list'),
@@ -29,5 +29,12 @@ urlpatterns = [
     path('director_update/<uuid:pk>/', director_view.director_update, name='director_update'),
     path('director_delete/<uuid:pk>/', director_view.director_delete, name='director_delete'),
     path('director_delete_all/', director_view.director_all_delete, name='director_delete_all'),
+
+    path('cast_list/', cast_view.cast_list, name='cast_list'),
+    path('cast_create/', cast_view.cast_create, name='cast_create'),
+    path('cast_detail/<uuid:pk>/', cast_view.cast_detail, name='cast_detail'),
+    path('cast_update/<uuid:pk>/', cast_view.cast_update, name='cast_update'),
+    path('cast_delete/<uuid:pk>/', cast_view.cast_delete, name='cast_delete'),
+    path('cast_delete_all/', cast_view.cast_all_delete, name='cast_delete_all'),
 ]
 
