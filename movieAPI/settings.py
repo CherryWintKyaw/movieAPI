@@ -54,6 +54,11 @@ AUTHENTICATION_BACKENDS = [
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://batch18-movie-ui.vercel.app",
+]
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication', # ကော်မာ (,) မပါရင် Error တက်ပါတယ်
