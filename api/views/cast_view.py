@@ -3,6 +3,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.db import IntegrityError # IntegrityError ကို import လုပ်ပါ
 from ..models import Cast
 from ..serializers import CastSerializer
 
@@ -26,13 +27,20 @@ def cast_list(request):
 @api_view(['POST'])
 def cast_create(request):
     """
-    သရုပ်ဆောင်အသစ် ထည့်သွင်းခြင်း (Image အတွက် form-data သုံးရန်)
+    သရုပ်ဆောင်အသစ် ထည့်သွင်းခြင်း (Unique Constraint ကိုပါ စစ်ဆေးပေးပါသည်)
     """
     serializer = CastSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except IntegrityError:
+        # Serializer validation က လွတ်သွားခဲ့ရင်တောင် Database error ကို ဒီမှာ ဖမ်းပေးပါမယ်
+        return Response(
+            {'error': 'This cast name already exists.'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 # 3. Cast Detail
 @api_view(['GET'])
@@ -42,18 +50,26 @@ def cast_detail(request, pk):
     return Response(serializer.data)
 
 # 4. Cast Full Update
-@api_view(['PUT'])
+@api_view(['PUT', 'PATCH']) # PATCH ပါ ထည့်ပေးထားခြင်းက ပိုကောင်းပါသည်
 def cast_update(request, pk):
     """
-    သရုပ်ဆောင်အချက်အလက်ကို Full Update လုပ်ခြင်း
+    သရုပ်ဆောင်အချက်အလက်ကို Update လုပ်ခြင်း
     """
     cast_member = get_object_or_404(Cast, pk=pk)
-    serializer = CastSerializer(cast_member, data=request.data)
     
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # partial=True ထည့်ပေးခြင်းဖြင့် အချက်အလက်အကုန်လုံး မပို့လည်း Update လုပ်လို့ရပါသည်
+    serializer = CastSerializer(cast_member, data=request.data, partial=True)
+    
+    try:
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except IntegrityError:
+        return Response(
+            {'error': 'Another cast member with this name already exists.'}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 # 5. Cast Delete
 @api_view(['DELETE'])
