@@ -57,6 +57,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://batch18-movie-ui.vercel.app",
+    "https://hot-flix-admin-panel.vercel.app"
 ]
 
 REST_FRAMEWORK = {
