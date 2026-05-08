@@ -94,10 +94,11 @@ class Cast(models.Model):
     # ID ကို UUID ပြောင်းလဲခြင်း
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
-    # သရုပ်ဆောင်အမည်
-    cast = models.CharField(max_length=255)
+    # သရုပ်ဆောင်အမည်ကို unique=True ထည့်လိုက်ပါ
+    # ဒါဆိုရင် နာမည်တူ နောက်တစ်ခု ထပ်ဆောက်လို့မရတော့ပါဘူး
+    cast = models.CharField(max_length=255, unique=True)
     
-    # သရုပ်ဆောင်၏ ဓာတ်ပုံ (cast_images ဆိုတဲ့ folder ထဲကို သိမ်းပါမယ်)
+    # သရုပ်ဆောင်၏ ဓာတ်ပုံ
     image = models.ImageField(upload_to='cast_images/', null=True, blank=True)
     
     # အချိန်မှတ်တမ်းများ
