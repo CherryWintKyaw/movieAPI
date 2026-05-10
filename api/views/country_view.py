@@ -50,13 +50,18 @@ def country_update(request, pk):
     """
     နိုင်ငံအချက်အလက်ကို Full Update လုပ်ခြင်း
     """
+    # ၁။ ပေးထားတဲ့ UUID နဲ့ data ရှိမရှိအရင်ရှာမယ်၊ မရှိရင် 404 ပြမယ်
     country = get_object_or_404(Country, pk=pk)
-    # partial=False (Default) ဖြစ်သောကြောင့် Full Update ဖြစ်သည်
+    
+    # ၂။ လက်ရှိ object ထဲကို request ကလာတဲ့ data အသစ်တွေ ထည့်ပေးမယ်
+    # unique=True စစ်ဆေးတာကို serializer.is_valid() က လုပ်ဆောင်ပေးသွားမှာပါ
     serializer = CountrySerializer(country, data=request.data)
     
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    # ၃။ Validation error (ဥပမာ- နာမည်တူနေတာမျိုး) ရှိရင် error ပြန်ပို့မယ်
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # 5. Country Delete

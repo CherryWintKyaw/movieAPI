@@ -71,7 +71,7 @@ class Director(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
     # ဒါရိုက်တာအမည်
-    director = models.CharField(max_length=255)
+    director = models.CharField(max_length=255, unique=True)
     
     # ဒါရိုက်တာ၏ ဓာတ်ပုံ (director_images ဆိုတဲ့ folder ထဲကို သိမ်းပါမယ်)
     # null=True, blank=True ထည့်ထားတာက ပုံမရှိလည်း save လို့ရအောင်ပါ
@@ -119,7 +119,7 @@ class Premiere(models.Model):
     
     # ထွက်ရှိသည့် ခုနှစ် (ဥပမာ - 2024, 2025)
     # IntegerField သုံးတာက ရှာရဖွေရ ပိုလွယ်ကူစေပါတယ်
-    year = models.IntegerField()
+    year = models.IntegerField(unique=True)
     
     # အချိန်မှတ်တမ်းများ
     created_at = models.DateTimeField(auto_now_add=True)
@@ -139,7 +139,7 @@ class Rating(models.Model):
     
     # Rating တန်ဖိုး (ဥပမာ - 8.5, 9.0)
     # max_digits=3, decimal_places=1 ဆိုလျှင် 10.0 အထိ သိမ်းလို့ရပါတယ်
-    rating = models.DecimalField(max_digits=3, decimal_places=1)
+    rating = models.DecimalField(max_digits=3, decimal_places=1,unique=True)
     
     # အချိန်မှတ်တမ်းများ
     created_at = models.DateTimeField(auto_now_add=True)
