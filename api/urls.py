@@ -53,9 +53,13 @@ urlpatterns = [
 
     path('movie_list/', movie_view.movie_list, name='movie_list'),
     path('movie_create/', movie_view.movie_create, name='movie_create'),
+    
+    # UUID pk ကို အောက်ပါအတိုင်း သုံးပါသည်
     path('movie_detail/<uuid:pk>/', movie_view.movie_detail, name='movie_detail'),
     path('movie_update/<uuid:pk>/', movie_view.movie_update, name='movie_update'),
     path('movie_delete/<uuid:pk>/', movie_view.movie_delete, name='movie_delete'),
-    path('movie_delete_all/', movie_view.movie_all_delete, name='movie_delete_all'),
+    
+    path('movie_all_delete/', movie_view.movie_all_delete, name='movie_all_delete'),
+    path('movie_play/<uuid:pk>/', movie_view.movie_play, name='movie_play'),
 ]
 

@@ -164,3 +164,10 @@ STATICFILES_DIRS = [
 # Media files configuration (အခု ဒါလေး ထည့်ပေးပါ)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+
+# settings.py အောက်ဆုံးမှာ ထည့်ရန်
+# settings.py
+TELEGRAM_API_ID = 32450438 
+TELEGRAM_API_HASH = '6def7f95aa507eb7250956f8b6514c9c'
+TELEGRAM_BOT_TOKEN = '8625977908:AAG51mTDAZcyv2Tmqj1epAdexLKKVBaGHfI'

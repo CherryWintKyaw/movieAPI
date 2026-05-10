@@ -1,77 +1,76 @@
 from rest_framework.decorators import api_view
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.http import StreamingHttpResponse
+
 from ..models import Movie
 from ..serializers import MovieSerializer
+from ..telegram_utils import get_video_stream
 
-# 1. Movie List with Pagination
+# --- 1. Movie List (ရုပ်ရှင်အားလုံးကို ပြရန်) ---
 @api_view(['GET'])
 def movie_list(request):
-    """
-    ရုပ်ရှင်အားလုံးကို Pagination ဖြင့် ပြသခြင်း (နောက်ဆုံးတင်တာ အရင်ပြမည်)
-    """
-    movies = Movie.objects.all().order_by('-created_at')
-    
-    paginator = PageNumberPagination()
-    paginator.page_size = 10
-    
-    result_page = paginator.paginate_queryset(movies, request)
-    serializer = MovieSerializer(result_page, many=True)
-    
-    return paginator.get_paginated_response(serializer.data)
+    movies = Movie.objects.all()
+    serializer = MovieSerializer(movies, many=True)
+    return Response(serializer.data)
 
-# 2. Movie Create
+# --- 2. Movie Create (ရုပ်ရှင်အသစ် သိမ်းရန်) ---
 @api_view(['POST'])
 def movie_create(request):
-    """
-    ရုပ်ရှင်အသစ် ထည့်သွင်းခြင်း
-    (Poster အတွက် form-data သုံးရန်နှင့် Master Data များအတွက် UUID ပို့ရန်)
-    """
     serializer = MovieSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# 3. Movie Detail
+# --- 3. Movie Detail (ရုပ်ရှင်တစ်ခုချင်းစီကို UUID ဖြင့် ကြည့်ရန်) ---
 @api_view(['GET'])
 def movie_detail(request, pk):
-    """
-    UUID pk သို့မဟုတ် slug ဖြင့် ကြည့်နိုင်ရန် (pk ကို ဦးစားပေးထားသည်)
-    """
     movie = get_object_or_404(Movie, pk=pk)
     serializer = MovieSerializer(movie)
     return Response(serializer.data)
 
-# 4. Movie Full Update
-@api_view(['PUT'])
+# --- 4. Movie Update (ရုပ်ရှင်အချက်အလက် ပြင်ရန်) ---
+@api_view(['PUT', 'PATCH'])
 def movie_update(request, pk):
-    """
-    ရုပ်ရှင်အချက်အလက်ကို Full Update လုပ်ခြင်း
-    """
     movie = get_object_or_404(Movie, pk=pk)
-    serializer = MovieSerializer(movie, data=request.data)
-    
+    # partial=True က patch အတွက် (အကုန်မပို့ဘဲ တစ်ခုချင်းပြင်ချင်ရင် သုံးနိုင်သည်)
+    serializer = MovieSerializer(movie, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# 5. Movie Delete
+# --- 5. Movie Delete (ရုပ်ရှင်တစ်ခုကို ဖျက်ရန်) ---
 @api_view(['DELETE'])
 def movie_delete(request, pk):
     movie = get_object_or_404(Movie, pk=pk)
     movie.delete()
-    return Response({'message': 'Movie deleted successfully!'}, status=status.HTTP_200_OK)
+    return Response({"message": "Movie deleted successfully!"}, status=status.HTTP_204_NO_CONTENT)
 
-# 6. Movie All Delete
+# --- 6. Movie All Delete (ရုပ်ရှင်အားလုံးကို ဖျက်ရန်) ---
 @api_view(['DELETE'])
 def movie_all_delete(request):
-    count = Movie.objects.all().count()
     Movie.objects.all().delete()
-    return Response(
-        {'message': f'Total {count} movies deleted successfully!'}, 
-        status=status.HTTP_200_OK
+    return Response({"message": "All movies have been deleted!"}, status=status.HTTP_204_NO_CONTENT)
+
+# --- 7. Movie Play (Video Streaming လုပ်ရန်) ---
+@api_view(['GET'])
+def movie_play(request, pk):
+    movie = get_object_or_404(Movie, pk=pk)
+    
+    if not movie.telegram_message_id or not movie.telegram_channel_id:
+        return Response({"error": "Missing video metadata!"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # View count တိုးပေးခြင်း
+    movie.view_count += 1
+    movie.save()
+
+    # Video stream ကို response အနေဖြင့် ပြန်ပေးခြင်း
+    response = StreamingHttpResponse(
+        get_video_stream(movie.telegram_message_id, movie.telegram_channel_id),
+        content_type=movie.mime_type
     )
+    response['Accept-Ranges'] = 'bytes'
+    return response
