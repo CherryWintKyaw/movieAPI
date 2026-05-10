@@ -6,7 +6,7 @@ class HeroSection(models.Model):
     # ID ကို UUID ပြောင်းလဲခြင်း
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
-    title = models.CharField(max_length=255, null=True, blank=True)
+    title = models.CharField(max_length=255, null=True, blank=True, unique=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     button_text = models.CharField(max_length=50, null=True, blank=True)
