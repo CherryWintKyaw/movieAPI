@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -151,6 +152,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# ဒါကို မဖြစ်မနေ ထည့်ပေးရပါမယ် (ဒါမှ collectstatic က ဘယ်မှာသွားစုရမလဲ သိမှာပါ)
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# ဒါက သင့် project ထဲမှာ manual ဆောက်ထားတဲ့ static folder ရှိရင် သုံးတာပါ
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 
 # Media files configuration (အခု ဒါလေး ထည့်ပေးပါ)
 MEDIA_URL = '/media/'
