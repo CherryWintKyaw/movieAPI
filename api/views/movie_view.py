@@ -58,26 +58,22 @@ def movie_all_delete(request):
 
 # --- 7. Movie Play (Video Streaming လုပ်ရန်) ---
 @api_view(['GET'])
-async def movie_play(request, pk):
-    # sync model ခေါ်ယူမှုကို async ပြောင်းပေးခြင်း
-    movie = await sync_to_async(get_object_or_404)(Movie, pk=pk)
+def movie_play(request, pk): # async ကို ဖြုတ်လိုက်ပါ
+    movie = get_object_or_404(Movie, pk=pk)
     
     if not movie.telegram_message_id or not movie.telegram_channel_id:
-        from rest_framework.response import Response
         return Response({"error": "Video metadata missing"}, status=400)
 
-    # View count ကို async ပုံစံဖြင့် တိုးပေးခြင်း
+    # View count တိုးခြင်း
     movie.view_count += 1
-    await sync_to_async(movie.save)()
+    movie.save()
 
-    # StreamingHttpResponse ထဲကို async generator ကို တိုက်ရိုက်ထည့်ပေးခြင်း
+    # async generator ကို sync context မှာ အလုပ်လုပ်အောင် wrap လုပ်ပေးရပါမယ်
+    stream_gen = get_video_stream(movie.telegram_message_id, movie.telegram_channel_id)
+
     response = StreamingHttpResponse(
-        get_video_stream(movie.telegram_message_id, movie.telegram_channel_id),
+        stream_gen,
         content_type=movie.mime_type
     )
-    
-    # Range request header ထည့်ခြင်း
     response['Accept-Ranges'] = 'bytes'
-    response['Cache-Control'] = 'no-cache'
-    
     return response
