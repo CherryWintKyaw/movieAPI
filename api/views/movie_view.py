@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.http import StreamingHttpResponse
+from asgiref.sync import sync_to_async
 
 from ..models import Movie
 from ..serializers import MovieSerializer
@@ -57,20 +58,26 @@ def movie_all_delete(request):
 
 # --- 7. Movie Play (Video Streaming လုပ်ရန်) ---
 @api_view(['GET'])
-def movie_play(request, pk):
-    movie = get_object_or_404(Movie, pk=pk)
+async def movie_play(request, pk):
+    # sync model ခေါ်ယူမှုကို async ပြောင်းပေးခြင်း
+    movie = await sync_to_async(get_object_or_404)(Movie, pk=pk)
     
     if not movie.telegram_message_id or not movie.telegram_channel_id:
-        return Response({"error": "Missing video metadata!"}, status=status.HTTP_400_BAD_REQUEST)
+        from rest_framework.response import Response
+        return Response({"error": "Video metadata missing"}, status=400)
 
-    # View count တိုးပေးခြင်း
+    # View count ကို async ပုံစံဖြင့် တိုးပေးခြင်း
     movie.view_count += 1
-    movie.save()
+    await sync_to_async(movie.save)()
 
-    # Video stream ကို response အနေဖြင့် ပြန်ပေးခြင်း
+    # StreamingHttpResponse ထဲကို async generator ကို တိုက်ရိုက်ထည့်ပေးခြင်း
     response = StreamingHttpResponse(
         get_video_stream(movie.telegram_message_id, movie.telegram_channel_id),
         content_type=movie.mime_type
     )
+    
+    # Range request header ထည့်ခြင်း
     response['Accept-Ranges'] = 'bytes'
+    response['Cache-Control'] = 'no-cache'
+    
     return response
