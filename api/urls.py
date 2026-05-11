@@ -57,7 +57,12 @@ urlpatterns = [
     path('movie_update/<uuid:pk>/', movie_view.movie_update, name='movie_update'),
     path('movie_delete/<uuid:pk>/', movie_view.movie_delete, name='movie_delete'),
     path('movie_delete_all/', movie_view.movie_all_delete, name='movie_delete_all'),
+    
+    # 🎬 ၁။ App ကနေ JSON link ယူဖို့အတွက် (ဒါက အရင်အတိုင်းပဲ)
     path('movie_play/<uuid:pk>/', movie_view.movie_play_api, name='movie_play_api'),
+
+    # 📺 ၂။ တကယ့် Video Stream ထွက်လာမယ့်နေရာ (ဒါလေး အသစ်ထည့်ပေးရပါမယ်)
+    path('stream/movie/<uuid:pk>/', movie_view.movie_stream, name='movie_stream'),
     
     # Player က ဗီဒီယို data ဆွဲဖို ခေါ်မယ့် Stream URL
     path('stream/movie/<uuid:pk>/', movie_view.movie_stream, name='movie_stream'),
