@@ -59,7 +59,7 @@ urlpatterns = [
     path('movie_update/<uuid:pk>/', movie_view.movie_update, name='movie_update'),
     path('movie_delete/<uuid:pk>/', movie_view.movie_delete, name='movie_delete'),
     
-    path('movie_all_delete/', movie_view.movie_all_delete, name='movie_all_delete'),
+    path('movie_delete_all/', movie_view.movie_all_delete, name='movie_delete_all'),
     path('movie_play/<uuid:pk>/', movie_view.movie_play, name='movie_play'),
 ]
 

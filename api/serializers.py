@@ -109,7 +109,7 @@ class MovieSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'slug', 'description', 'poster',
             'video_link', 'trailer_link', 'telegram_message_id', 
-            'telegram_file_id', 'telegram_channel_id', 'mime_type', 'file_size',
+             'telegram_channel_id', 'mime_type', 'file_size',
             'country', 'country_detail',
             'rating', 'rating_detail',
             'release_year', 'release_year_detail',

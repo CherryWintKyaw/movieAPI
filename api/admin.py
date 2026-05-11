@@ -61,7 +61,7 @@ class MovieAdmin(admin.ModelAdmin):
             'fields': ('title', 'slug', 'description', 'poster', 'duration')
         }),
         ('Streaming Metadata (Telegram)', {
-            'fields': ('telegram_channel_id', 'telegram_message_id', 'telegram_file_id', 'mime_type', 'file_size', 'video_link', 'trailer_link')
+            'fields': ('telegram_channel_id', 'telegram_message_id',  'mime_type', 'file_size', 'video_link', 'trailer_link')
         }),
         ('Categorization', {
             'fields': ('country', 'rating', 'release_year', 'genres', 'directors', 'casts')

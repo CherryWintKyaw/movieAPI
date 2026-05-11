@@ -60,14 +60,25 @@ def movie_update(request, pk):
 @api_view(['DELETE'])
 def movie_delete(request, pk):
     movie = get_object_or_404(Movie, pk=pk)
+    movie_title = movie.title  # (Optional) နာမည်လေးပါ ပြချင်ရင် သိမ်းထားလို့ရပါတယ်
     movie.delete()
-    return Response({"message": "Movie deleted successfully!"}, status=status.HTTP_204_NO_CONTENT)
+    
+    return Response(
+        {"message": f"Movie '{movie_title}' deleted successfully!"}, 
+        status=status.HTTP_200_OK
+    )
 
-# --- 6. Movie All Delete (ရုပ်ရှင်အားလုံးကို ဖျက်ရန်) ---
+# --- Movie အားလုံးကို ဖျက်ရန် ---
 @api_view(['DELETE'])
 def movie_all_delete(request):
+    # ဖျက်လိုက်တဲ့ အရေအတွက်ကို သိချင်ရင် count() အရင်လုပ်ပါ
+    count = Movie.objects.all().count()
     Movie.objects.all().delete()
-    return Response({"message": "All movies have been deleted!"}, status=status.HTTP_204_NO_CONTENT)
+    
+    return Response(
+        {"message": f"Total {count} movies have been deleted successfully!"}, 
+        status=status.HTTP_200_OK
+    )
 
 # --- 7. Movie Play (Video Streaming လုပ်ရန်) ---
 @api_view(['GET'])

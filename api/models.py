@@ -169,7 +169,6 @@ class Movie(models.Model):
     video_link = models.URLField(max_length=1000, null=True, blank=True)
     trailer_link = models.URLField(max_length=1000, null=True, blank=True)
     telegram_message_id = models.BigIntegerField(null=True, blank=True)
-    telegram_file_id = models.CharField(max_length=500, null=True, blank=True)
     telegram_channel_id = models.BigIntegerField(default=-1003967453350)
     mime_type = models.CharField(max_length=100, default='video/mp4')
     file_size = models.BigIntegerField(null=True, blank=True)
