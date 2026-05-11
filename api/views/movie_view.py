@@ -9,6 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from ..models import Movie
 from ..serializers import MovieSerializer
 from ..telegram_utils import get_video_stream
+from django.urls import reverse
 
 # --- 1. Movie List (ရုပ်ရှင်အားလုံးကို ပြရန်) ---
 @api_view(['GET'])
