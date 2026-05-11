@@ -1,30 +1,23 @@
-from telethon import TelegramClient
-from telethon.sessions import StringSession
-from django.conf import settings
-
-api_id = settings.TELEGRAM_API_ID
-api_hash = settings.TELEGRAM_API_HASH
-bot_token = settings.TELEGRAM_BOT_TOKEN
-
-# StringSession() ကို သုံးခြင်းဖြင့် sqlite database error ကင်းဝေးစေသည်
-client = TelegramClient(StringSession(), api_id, api_hash)
+from telethon import functions, types
 
 async def get_video_stream(message_id, channel_id):
     try:
-        # Client ကို connect လုပ်ခြင်း
-        if not client.is_connected():
-            await client.connect()
+        # channel_id က -100 ပါတာ/မပါတာကို handle လုပ်မယ်
+        if str(channel_id).startswith('-100'):
+            entity_id = int(channel_id)
+        else:
+            entity_id = int(f"-100{channel_id}")
+
+        # ၁။ Entity ကို အရင်ယူပါ (ဒါမှ Channel လား၊ Group လား ကွဲမှာပါ)
+        entity = await client.get_entity(entity_id)
         
-        # Bot အဖြစ် login ဝင်ခြင်း
-        if not await client.is_user_authorized():
-            await client.start(bot_token=bot_token)
-        
-        entity = await client.get_entity(int(channel_id))
-        message = await client.get_messages(entity, ids=int(message_id))
+        # ၂။ Message ကို ဆွဲထုတ်ပါ
+        message = await client.get_messages(entity, ids=message_id)
         
         if message and message.video:
-            # chunk_size ကို နည်းနည်းလျှော့ကြည့်ပါ (ပိုမြန်စေရန်)
-            async for chunk in client.iter_download(message.video, chunk_size=512*1024):
+            # ၃။ Generator နဲ့ data chunk တွေကို ပို့ပေးပါ
+            async for chunk in client.iter_download(message.video):
                 yield chunk
     except Exception as e:
-        print(f"Streaming Error: {e}")
+        print(f"❌ Telegram Utility Error: {str(e)}")
+        yield b"" # Error ဖြစ်ရင် empty byte ပြန်ပေးမယ်
