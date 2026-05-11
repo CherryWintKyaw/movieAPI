@@ -4,6 +4,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.http import StreamingHttpResponse
 from asgiref.sync import sync_to_async
+from rest_framework.pagination import PageNumberPagination
 
 from ..models import Movie
 from ..serializers import MovieSerializer
@@ -12,9 +13,21 @@ from ..telegram_utils import get_video_stream
 # --- 1. Movie List (ရုပ်ရှင်အားလုံးကို ပြရန်) ---
 @api_view(['GET'])
 def movie_list(request):
-    movies = Movie.objects.all()
-    serializer = MovieSerializer(movies, many=True)
-    return Response(serializer.data)
+    # 1. Data အားလုံးကို ဆွဲထုတ်မယ် (Pagination လုပ်ရင် order_by ထည့်ပေးဖို့ အကြံပြုလိုပါတယ်)
+    movies = Movie.objects.all().order_by('id')
+    
+    # 2. Paginator object ကို တည်ဆောက်ပြီး page size သတ်မှတ်မယ်
+    paginator = PageNumberPagination()
+    paginator.page_size = 10 # တစ်မျက်နှာမှာ ပြလိုတဲ့ အရေအတွက်
+    
+    # 3. Queryset ကို paginate လုပ်မယ်
+    result_page = paginator.paginate_queryset(movies, request)
+    
+    # 4. ရလာတဲ့ result_page (စာမျက်နှာတစ်ခုစာ data) ကိုပဲ serialize လုပ်မယ်
+    serializer = MovieSerializer(result_page, many=True)
+    
+    # 5. Paginated response (next, previous links ပါဝင်သော response) ကို return ပြန်မယ်
+    return paginator.get_paginated_response(serializer.data)
 
 # --- 2. Movie Create (ရုပ်ရှင်အသစ် သိမ်းရန်) ---
 @api_view(['POST'])
@@ -58,22 +71,20 @@ def movie_all_delete(request):
 
 # --- 7. Movie Play (Video Streaming လုပ်ရန်) ---
 @api_view(['GET'])
-def movie_play(request, pk): # async ကို ဖြုတ်လိုက်ပါ
+def movie_play(request, pk):
     movie = get_object_or_404(Movie, pk=pk)
     
-    if not movie.telegram_message_id or not movie.telegram_channel_id:
-        return Response({"error": "Video metadata missing"}, status=400)
-
-    # View count တိုးခြင်း
-    movie.view_count += 1
-    movie.save()
-
-    # async generator ကို sync context မှာ အလုပ်လုပ်အောင် wrap လုပ်ပေးရပါမယ်
+    # Video stream generator ကို ယူမယ်
     stream_gen = get_video_stream(movie.telegram_message_id, movie.telegram_channel_id)
 
+    # StreamingHttpResponse ထုတ်ပေးမယ်
     response = StreamingHttpResponse(
         stream_gen,
         content_type=movie.mime_type
     )
+    
+    # Video player တွေအတွက် အရေးကြီးတဲ့ Header များ
     response['Accept-Ranges'] = 'bytes'
+    response['Content-Disposition'] = f'inline; filename="{movie.slug}.mp4"'
+    
     return response
