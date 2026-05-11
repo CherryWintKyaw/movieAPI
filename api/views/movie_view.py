@@ -81,21 +81,25 @@ def movie_all_delete(request):
     )
 
 # --- 7. Movie Play (Video Streaming လုပ်ရန်) ---
+# နာမည်ကို movie_stream လို ပြောင်းလိုက်ပါ
+def movie_stream(request, pk):
+    movie = get_object_or_404(Movie, pk=pk)
+    stream_gen = get_video_stream(movie.telegram_message_id, movie.telegram_channel_id)
+    response = StreamingHttpResponse(stream_gen, content_type=movie.mime_type)
+    response['Accept-Ranges'] = 'bytes'
+    return response
+
 @api_view(['GET'])
-def movie_play(request, pk):
+def movie_play_api(request, pk):
     movie = get_object_or_404(Movie, pk=pk)
     
-    # Video stream generator ကို ယူမယ်
-    stream_gen = get_video_stream(movie.telegram_message_id, movie.telegram_channel_id)
+    # ဗီဒီယို stream လုပ်မယ့် URL ကို တည်ဆောက်မယ်
+    # အပေါ်က movie_stream function ဆီကို သွားမယ့် URL ပါ
+    video_url = request.build_absolute_uri(reverse('movie_stream', args=[pk]))
 
-    # StreamingHttpResponse ထုတ်ပေးမယ်
-    response = StreamingHttpResponse(
-        stream_gen,
-        content_type=movie.mime_type
-    )
-    
-    # Video player တွေအတွက် အရေးကြီးတဲ့ Header များ
-    response['Accept-Ranges'] = 'bytes'
-    response['Content-Disposition'] = f'inline; filename="{movie.slug}.mp4"'
-    
-    return response
+    return Response({
+        "status": "success",
+        "video_link": video_url, # ဒီ link ကို App က ဖတ်ပြီး Player မှာ ဖွင့်ပါလိမ့်မယ်
+        "title": movie.title,
+        "mime_type": movie.mime_type
+    })

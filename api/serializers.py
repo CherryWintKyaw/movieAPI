@@ -153,12 +153,38 @@ class SeasonSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+from rest_framework import serializers
+from .models import Series, Genre, Cast, Director, Country, Rating, Premiere
+
 class SeriesSerializer(serializers.ModelSerializer):
-    slug = serializers.SlugField(read_only=True)
-    # Series အောက်မှာရှိတဲ့ Season တွေကို list လိုက် မြင်ချင်ရင်
-    seasons = SeasonSerializer(many=True, read_only=True)
+    # Foreign Key တွေကနေ နာမည်တွေကို string အနေနဲ့ တိုက်ရိုက်ဖတ်ပြဖို့ (Read Only)
+    country_name = serializers.CharField(source='country.name', read_only=True)
+    rating_name = serializers.CharField(source='rating.name', read_only=True)
+    release_year_name = serializers.CharField(source='release_year.name', read_only=True)
+
+    # ManyToMany Field တွေကို list အလိုက် နာမည်လေးတွေပဲ ပြချင်ရင်
+    genres_list = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='genre',
+        source='genres'
+    )
 
     class Meta:
         model = Series
-        fields = '__all__'
-        read_only_fields = ['id', 'view_count', 'created_at', 'updated_at']
+        # field အားလုံးကို ပြချင်ရင် '__all__' သုံးနိုင်ပါတယ်
+        # ဒါပေမဲ့ custom field တွေပါချင်ရင် list နဲ့ ရေးတာ ပိုကောင်းပါတယ်
+        fields = [
+            'id', 'title', 'slug', 'description', 'poster', 
+            'status', 'is_trending', 'view_count',
+            'country', 'country_name', 
+            'rating', 'rating_name',
+            'release_year', 'release_year_name',
+            'genres', 'genres_list', 
+            'directors', 'casts', 
+            'created_at', 'updated_at'
+        ]
+        
+        # ID တွေကိုပဲသုံးပြီး create/update လုပ်လို့ရအောင် field တွေကို default ထားပြီး
+        # name field တွေကိုပဲ read_only လုပ်ထားတာပါ
+        read_only_fields = ['id', 'slug', 'created_at', 'updated_at', 'view_count']

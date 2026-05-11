@@ -205,9 +205,8 @@ class Movie(models.Model):
         ordering = ['-created_at']
 
 
-# --- Series Model ---
+# --- Series Model --
 class Series(models.Model):
-    # Status အတွက် Enum (Choices) သတ်မှတ်ခြင်း
     class SeriesStatus(models.TextChoices):
         ONGOING = 'ONGOING', 'Ongoing'
         COMPLETED = 'COMPLETED', 'Completed'
@@ -216,20 +215,21 @@ class Series(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
+    
+    # allow_unicode=True ထည့်ရင် မြန်မာစာ title တွေကိုပါ slug ထွက်ပေးနိုင်ပါတယ်
+    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True, allow_unicode=True)
+    
     description = models.TextField(null=True, blank=True)
     poster = models.ImageField(upload_to='series_posters/')
     
-    # Master Data ချိတ်ဆက်မှုများ
-    country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True, related_name='series')
-    rating = models.ForeignKey('Rating', on_delete=models.SET_NULL, null=True, related_name='series')
-    release_year = models.ForeignKey('Premiere', on_delete=models.SET_NULL, null=True, related_name='series')
+    country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True, related_name='series_list')
+    rating = models.ForeignKey('Rating', on_delete=models.SET_NULL, null=True, related_name='series_list')
+    release_year = models.ForeignKey('Premiere', on_delete=models.SET_NULL, null=True, related_name='series_list')
     
-    genres = models.ManyToManyField('Genre', related_name='series')
-    directors = models.ManyToManyField('Director', related_name='series')
-    casts = models.ManyToManyField('Cast', related_name='series')
+    genres = models.ManyToManyField('Genre', related_name='series_list')
+    directors = models.ManyToManyField('Director', related_name='series_list')
+    casts = models.ManyToManyField('Cast', related_name='series_list')
     
-    # Status ကို Enum choices ဖြင့် အသုံးပြုခြင်း
     status = models.CharField(
         max_length=20,
         choices=SeriesStatus.choices,
@@ -243,9 +243,10 @@ class Series(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        # Series Title ကို slug အဖြစ် အလိုအလျောက်ပြောင်းလဲရန်
         if not self.slug:
-            self.slug = slugify(self.title)
+            # Title တူရင် slug မထပ်အောင် title + uuid ရဲ့ အရှေ့ပိုင်းကို တွဲသုံးတာ ပိုစိတ်ချရပါတယ်
+            base_slug = slugify(self.title, allow_unicode=True)
+            self.slug = f"{base_slug}-{str(self.id)[:8]}"
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -254,6 +255,7 @@ class Series(models.Model):
     class Meta:
         verbose_name = "Series"
         verbose_name_plural = "Series"
+        ordering = ['-created_at'] # နောက်ဆုံးတင်တာ အရင်ပြမယ်
 
 
 # --- Season Model ---
