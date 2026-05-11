@@ -21,9 +21,12 @@ class AsyncToSyncIterator:
 
     def __next__(self):
         try:
-            # Async chunk ကို sync အနေနဲ့ ဆွဲထုတ်ပေးသည်
+            # async chunk ကို synchronous အဖြစ် ပြောင်းယူသည်
             return async_to_sync(self.async_gen.__anext__)()
         except StopAsyncIteration:
+            raise StopIteration
+        except Exception as e:
+            print(f"Iterator Next Error: {e}")
             raise StopIteration
 
 # --- 1. Movie List ---
@@ -77,33 +80,27 @@ def movie_all_delete(request):
     Movie.objects.all().delete()
     return Response({"message": f"Total {count} movies deleted successfully!"}, status=status.HTTP_200_OK)
 
-# --- 7. Movie Stream (တကယ့် Video Data ကို ပို့ပေးသည့်နေရာ) ---
+# --- 7. Movie Stream (Video Streaming Logic) ---
 def movie_stream(request, pk):
     movie = get_object_or_404(Movie, pk=pk)
     
-    # ၁။ Telegram မှ Async Generator ကို ခေါ်ယူသည်
+    # ၁။ Telegram Generator ယူသည်
     async_gen = get_video_stream(movie.telegram_message_id, movie.telegram_channel_id)
     
-    # ၂။ Async ကို Sync ပြောင်းပေးသည် (Warning ပျောက်စေရန်)
+    # ၂။ Sync Wrapper ဖြင့် အုပ်သည်
     sync_gen = AsyncToSyncIterator(async_gen)
 
-    # ၃။ Response ထုတ်ပေးသည်
+    # ၃။ Streaming Response ပေးပို့သည်
     response = StreamingHttpResponse(sync_gen, content_type=movie.mime_type)
-    
-    # ၄။ Player များအတွက် မရှိမဖြစ်လိုအပ်သော Header များ
     response['Accept-Ranges'] = 'bytes'
     
-    # 🚩 File size က 1 ထက်ကြီးမှ Content-Length ထည့်ပေးမည် (Player အလုပ်လုပ်စေရန်)
+    # Player များအတွက် File Size Header ထည့်သွင်းသည်
     if movie.file_size and movie.file_size > 1:
         response['Content-Length'] = str(movie.file_size)
-    else:
-        # File Size မရှိလျှင် ခန့်မှန်းခြေ တစ်ခုခု ထည့်ပေးထားခြင်း (Optional)
-        # response['Content-Length'] = "500000000" 
-        pass
-        
+    
     return response
 
-# --- 8. Movie Play API (App မှ video_link ယူရန်) ---
+# --- 8. Movie Play API ---
 @api_view(['GET'])
 def movie_play_api(request, pk):
     movie = get_object_or_404(Movie, pk=pk)
@@ -113,5 +110,6 @@ def movie_play_api(request, pk):
         "status": "success",
         "video_link": video_url,
         "title": movie.title,
-        "mime_type": movie.mime_type
+        "mime_type": movie.mime_type,
+        "file_size": movie.file_size
     })
