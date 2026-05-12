@@ -138,3 +138,46 @@ class MovieSerializer(serializers.ModelSerializer):
         response['genres'] = [str(genre) for genre in instance.genres.all()]
         
         return response
+    
+    #series
+
+class SeriesSerializer(serializers.ModelSerializer):
+    # POST/PUT အတွက် ID လက်ခံရန် PrimaryKeyRelatedField သုံးမည်
+    genres = serializers.PrimaryKeyRelatedField(many=True, queryset=Genre.objects.all())
+    country = serializers.PrimaryKeyRelatedField(queryset=Country.objects.all())
+    rating = serializers.PrimaryKeyRelatedField(queryset=Rating.objects.all())
+    release_year = serializers.PrimaryKeyRelatedField(queryset=Premiere.objects.all())
+
+    class Meta:
+        model = Series
+        fields = '__all__'
+        read_only_fields = ['slug']
+
+    # Title ရှိပြီးသားလားလို့ API ကနေ စစ်ပေးမယ့် function
+    def validate_title(self, value):
+        if Series.objects.filter(title__iexact=value).exists():
+            raise serializers.ValidationError("A series with this title already exists.")
+        return value
+
+    def to_representation(self, instance):
+        """
+        Data ပြန်ထုတ်ပေးတဲ့အခါ ID တွေအစား နာမည်တွေ ပြောင်းပေးတာ
+        """
+        response = super().to_representation(instance)
+        
+        # Foreign Key Fields များကို String အဖြစ်ပြောင်းလဲခြင်း
+        if instance.rating:
+            response['rating'] = str(instance.rating)
+        
+        if instance.release_year:
+            response['release_year'] = str(instance.release_year)
+            
+        if instance.country:
+            response['country'] = str(instance.country)
+
+        # Many-to-Many Fields (Genres, Directors, Casts) များကို List of Names အဖြစ်ပြောင်းခြင်း
+        response['genres'] = [str(genre) for genre in instance.genres.all()]
+        response['directors'] = [str(director) for director in instance.directors.all()]
+        response['casts'] = [str(cast) for cast in instance.casts.all()]
+        
+        return response

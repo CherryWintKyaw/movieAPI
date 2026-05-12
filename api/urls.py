@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import banner_view, country_view, genre_view, director_view, cast_view, premiere_view, rating_view, movie_view
+from .views import banner_view, country_view, genre_view, director_view, cast_view, premiere_view, rating_view, movie_view, series_view
 
 urlpatterns = [
     path('banner_list/', banner_view.banner_list, name='banner_list'),
@@ -76,6 +76,13 @@ urlpatterns = [
     path('movies_update/<uuid:pk>/', movie_view.movie_update, name='movie_update'),
     path('movies_delete/<uuid:pk>/', movie_view.movie_delete, name='movie_delete'),
     path('movies_delete_all/', movie_view.movie_delete_all, name='movie_delete_all'),
+
+    path('series_list/', series_view.series_list, name='series_list'),
+    path('series_create/', series_view.series_create, name='series_create'),
+    path('series_detail/<uuid:pk>/', series_view.series_detail, name='series_detail'),
+    path('series_update/<uuid:pk>/', series_view.series_update, name='series_update'),
+    path('series_delete/<uuid:pk>/', series_view.series_delete, name='series_delete'),
+    path('series_delete_all/', series_view.series_delete_all, name='series_delete_all'),
 
 
 ]

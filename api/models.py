@@ -212,3 +212,69 @@ class MovieVideo(models.Model):
     @property
     def embed_url(self):
         return f"https://doodstream.com/e/{self.dood_file_code}"
+    
+#series
+
+class Series(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
+    title = models.CharField(max_length=255, db_index=True, unique=True)
+    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    poster = models.ImageField(upload_to='series_posters/')
+    
+    country = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, related_name='series')
+    rating = models.ForeignKey(Rating, on_delete=models.SET_NULL, null=True, related_name='series')
+    release_year = models.ForeignKey(Premiere, on_delete=models.SET_NULL, null=True, related_name='series')
+    genres = models.ManyToManyField(Genre, related_name='series')
+    directors = models.ManyToManyField(Director, related_name='series', blank=True)
+    casts = models.ManyToManyField(Cast, related_name='series', blank=True)
+    
+    is_trending = models.BooleanField(default=False)
+    view_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Series"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            # အခြေခံ slug ဖန်တီးမယ်
+            base_slug = slugify(self.title)
+            # တကယ်လို့ slug က ရှိနေပြီးသားဆိုရင် random string လေး ကပ်ပေးမယ်
+            if Series.objects.filter(slug=base_slug).exists():
+                self.slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
+            else:
+                self.slug = base_slug
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+class Season(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    series = models.ForeignKey(Series, on_delete=models.CASCADE, related_name='seasons')
+    season_number = models.PositiveIntegerField()
+    description = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['season_number']
+
+    def __str__(self):
+        return f"{self.series.title} - Season {self.season_number}"
+
+class Episode(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='episodes')
+    episode_number = models.PositiveIntegerField()
+    title = models.CharField(max_length=255)
+    video_file = models.FileField(upload_to='series_videos/', null=True, blank=True) # သို့မဟုတ် Video URL
+    view_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['episode_number']
+
+    def __str__(self):
+        return f"{self.season.series.title} S{self.season.season_number} E{self.episode_number}: {self.title}"
