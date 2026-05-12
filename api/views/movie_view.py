@@ -7,22 +7,37 @@ from ..serializers import MovieSerializer
 from rest_framework.pagination import PageNumberPagination
 
 # ၁။ ရုပ်ရှင်အားလုံးစာရင်း (Home Screen အတွက်)
+from django.db.models import Q
+
 @api_view(['GET'])
 def movie_list(request):
-    # ၁. Queryset ကို အရင်ယူမယ်
+    # ၁။ Query Params ကနေ search keyword ကို ယူမယ်
+    search_query = request.query_params.get('search', None)
+    
+    # ၂။ အခြေခံ Queryset (Latest first)
     movies = Movie.objects.all().order_by('-created_at')
-    
-    # ၂. Pagination Object ကို တည်ဆောက်မယ်
+
+    # 🚀 ၃။ Search ပါလာရင် Global Search အရင်လုပ်မယ်
+    if search_query:
+        movies = movies.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(casts__cast__icontains=search_query) |
+            Q(directors__director__icontains=search_query) |
+            Q(genres__genre__icontains=search_query)
+        ).distinct()
+
+    # ၄။ Pagination Object တည်ဆောက်မယ်
     paginator = PageNumberPagination()
-    paginator.page_size = 2  # တစ်မျက်နှာမှာ ပြချင်တဲ့ item အရေအတွက်
+    paginator.page_size = 10  # စမ်းသပ်ဖို့ ၂ ခုပဲ ထားတာ နည်းလွန်းရင် ၁၀ လောက် ပြောင်းထားပါ
     
-    # ၃. ရလာတဲ့ movies ထဲက သက်ဆိုင်ရာ page အတွက် data ကို ခွဲထုတ်မယ်
+    # ၅။ Filter လုပ်ပြီးသား movies ထဲကမှ pagination ခွဲထုတ်မယ်
     result_page = paginator.paginate_queryset(movies, request)
     
-    # ၄. Serializer ထဲကို result_page (ခွဲထုတ်ပြီးသား data) ကို ထည့်မယ်
+    # ၆။ Serializer ထဲ ထည့်မယ်
     serializer = MovieSerializer(result_page, many=True)
     
-    # ၅. အဖြေပြန်ပေးတဲ့အခါ pagination metadata (next, previous, count) တွေပါအောင် ပြန်ပေးမယ်
+    # ၇။ Pagination Metadata နဲ့အတူ အဖြေပြန်ပေးမယ်
     return paginator.get_paginated_response(serializer.data)
 
 # ၂။ Trending ဖြစ်နေတဲ့ ရုပ်ရှင်များ (၁၀ ကားစာ)
