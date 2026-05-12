@@ -181,3 +181,49 @@ class SeriesSerializer(serializers.ModelSerializer):
         response['casts'] = [str(cast) for cast in instance.casts.all()]
         
         return response
+    
+    #season
+class SeasonSerializer(serializers.ModelSerializer):
+    # POST/PUT လုပ်တဲ့အခါ Series ID ကို လက်ခံဖို့
+    series = serializers.PrimaryKeyRelatedField(queryset=Series.objects.all())
+
+    class Meta:
+        model = Season
+        fields = [
+            'id', 
+            'series', 
+            'season_number', 
+            'description', 
+            'created_at'
+        ]
+
+    def to_representation(self, instance):
+        """
+        Data ပြန်ထုတ်ပြတဲ့အခါ Series ID အစား Series နာမည်ကို ပြောင်းလဲပြသခြင်း
+        """
+        response = super().to_representation(instance)
+        
+        # series object ရှိမရှိ စစ်ဆေးပြီး String အဖြစ်ပြောင်းမယ်
+        if instance.series:
+            response['series_name'] = instance.series.title
+            # တကယ်လို့ response['series'] နေရာမှာပဲ နာမည်ပြချင်ရင် အောက်ကအတိုင်း ရေးနိုင်ပါတယ်
+            response['series'] = instance.series.title
+            
+        return response
+
+    def validate(self, data):
+        """
+        Series တစ်ခုထဲမှာ Season Number ထပ်မနေအောင် စစ်ဆေးခြင်း (Custom Validation)
+        """
+        series = data.get('series')
+        season_number = data.get('season_number')
+
+        # အသစ်ဆောက်တဲ့အခါ (သို့) ပြင်ဆင်တဲ့အခါ Season Number တူနေလား စစ်မယ်
+        if Season.objects.filter(series=series, season_number=season_number).exists():
+            # Update လုပ်နေတာဆိုရင် ကိုယ့် ID ကိုယ် ပြန်မစစ်မိအောင် လုပ်ဖို့လိုနိုင်ပါတယ်
+            if not self.instance or self.instance.season_number != season_number:
+                raise serializers.ValidationError(
+                    f"Season {season_number} for this series already exists."
+                )
+        
+        return data
