@@ -1,6 +1,14 @@
 import uuid
+import asyncio
+import threading
 from django.db import models
 from django.utils.text import slugify
+from django.conf import settings
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+from asgiref.sync import sync_to_async
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 
 class HeroSection(models.Model):
     # ID ကို UUID ပြောင်းလဲခြင်း
@@ -154,43 +162,37 @@ class Rating(models.Model):
         ordering = ['-rating'] # Rating အမြင့်ဆုံးကားတွေကို အပေါ်ဆုံးကပြရန်
 
 
+
+import uuid
+import requests
+import threading
+from django.db import models
+from django.utils.text import slugify
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.conf import settings
+
+# --- Movie Model ---
 class Movie(models.Model):
-    # ID ကို UUID ပြောင်းလဲခြင်း
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
-    # ရုပ်ရှင်အခြေခံအချက်အလက်များ
-    title = models.CharField(max_length=255)
-    # Slug field ထည့်သွင်းခြင်း
+    title = models.CharField(max_length=255, db_index=True)
     slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     poster = models.ImageField(upload_to='movie_posters/')
     
-    # Telegram နှင့် Video အချက်အလက်များ
-    video_link = models.URLField(max_length=1000, null=True, blank=True)
-    trailer_link = models.URLField(max_length=1000, null=True, blank=True)
-    telegram_message_id = models.BigIntegerField(null=True, blank=True)
-    telegram_channel_id = models.BigIntegerField(default=-1003967453350)
-    mime_type = models.CharField(max_length=100, default='video/mp4')
-    file_size = models.BigIntegerField(null=True, blank=True)
-    
-    # Master Data ချိတ်ဆက်မှုများ
+    # Relationships (မင်းအရင်ရေးထားတဲ့ models တွေနဲ့ ချိတ်မယ်)
     country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True, related_name='movies')
     rating = models.ForeignKey('Rating', on_delete=models.SET_NULL, null=True, related_name='movies')
     release_year = models.ForeignKey('Premiere', on_delete=models.SET_NULL, null=True, related_name='movies')
-    
     genres = models.ManyToManyField('Genre', related_name='movies')
-    directors = models.ManyToManyField('Director', related_name='movies')
-    casts = models.ManyToManyField('Cast', related_name='movies')
+    directors = models.ManyToManyField('Director', related_name='movies', blank=True)
+    casts = models.ManyToManyField('Cast', related_name='movies', blank=True)
     
-    # အပိုဆောင်း အချက်အလက်များ
-    duration = models.CharField(max_length=100, null=True, blank=True)
     is_trending = models.BooleanField(default=False)
     view_count = models.PositiveIntegerField(default=0)
-    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Slug ကို အလိုလို generate လုပ်ရန်
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.title)
@@ -199,121 +201,76 @@ class Movie(models.Model):
     def __str__(self):
         return self.title
 
-    class Meta:
-        verbose_name = "Movie"
-        verbose_name_plural = "Movies"
-        ordering = ['-created_at']
-
-
-# --- Series Model --
-class Series(models.Model):
-    class SeriesStatus(models.TextChoices):
-        ONGOING = 'ONGOING', 'Ongoing'
-        COMPLETED = 'COMPLETED', 'Completed'
-        UPCOMING = 'UPCOMING', 'Upcoming'
-        DROPPED = 'DROPPED', 'Dropped'
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    title = models.CharField(max_length=255)
+# --- Movie Video Model (DoodStream Focused) ---
+class MovieVideo(models.Model):
+    QUALITY_CHOICES = [
+        ('360p','360p'),
+        ('480p','480p'),
+        ('720p','720p'),
+        ('1080p','1080p'),
+        ('4K','4K')
+    ]
     
-    # allow_unicode=True ထည့်ရင် မြန်မာစာ title တွေကိုပါ slug ထွက်ပေးနိုင်ပါတယ်
-    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True, allow_unicode=True)
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='videos')
+    quality = models.CharField(max_length=10, choices=QUALITY_CHOICES, null=True, blank=True)
     
-    description = models.TextField(null=True, blank=True)
-    poster = models.ImageField(upload_to='series_posters/')
-    
-    country = models.ForeignKey('Country', on_delete=models.SET_NULL, null=True, related_name='series_list')
-    rating = models.ForeignKey('Rating', on_delete=models.SET_NULL, null=True, related_name='series_list')
-    release_year = models.ForeignKey('Premiere', on_delete=models.SET_NULL, null=True, related_name='series_list')
-    
-    genres = models.ManyToManyField('Genre', related_name='series_list')
-    directors = models.ManyToManyField('Director', related_name='series_list')
-    casts = models.ManyToManyField('Cast', related_name='series_list')
-    
-    status = models.CharField(
-        max_length=20,
-        choices=SeriesStatus.choices,
-        default=SeriesStatus.ONGOING,
+    # DoodStream API အတွက် အရေးကြီးဆုံးကွက်
+    dood_file_code = models.CharField(
+        max_length=100, 
+        help_text="DoodStream File Code (ဥပမာ- 6def7f95aa50)"
     )
     
-    is_trending = models.BooleanField(default=False)
-    view_count = models.PositiveIntegerField(default=0)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            # Title တူရင် slug မထပ်အောင် title + uuid ရဲ့ အရှေ့ပိုင်းကို တွဲသုံးတာ ပိုစိတ်ချရပါတယ်
-            base_slug = slugify(self.title, allow_unicode=True)
-            self.slug = f"{base_slug}-{str(self.id)[:8]}"
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.title
-
-    class Meta:
-        verbose_name = "Series"
-        verbose_name_plural = "Series"
-        ordering = ['-created_at'] # နောက်ဆုံးတင်တာ အရင်ပြမယ်
-
-
-# --- Season Model ---
-class Season(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    series = models.ForeignKey(Series, on_delete=models.CASCADE, related_name='seasons')
-    
-    season_number = models.IntegerField(default=1) # Season 1, 2, 3...
-    title = models.CharField(max_length=255, null=True, blank=True) # ဥပမာ - Season 1: The Beginning
-    poster = models.ImageField(upload_to='season_posters/', null=True, blank=True)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.series.title} - Season {self.season_number}"
-
-    class Meta:
-        verbose_name = "Season"
-        verbose_name_plural = "Seasons"
-        ordering = ['season_number']
-
-
-# --- Episode Model ---
-class Episode(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='episodes')
-    
-    episode_number = models.IntegerField() # Episode 1, 2, 3...
-    title = models.CharField(max_length=255, null=True, blank=True)
-    slug = models.SlugField(max_length=255, null=True, blank=True)
-    
-    # Episode thumbnail
-    poster = models.ImageField(upload_to='episode_posters/', null=True, blank=True)
-    
-    # Telegram Streaming အချက်အလက်များ (Netflix Style အတွက်)
-    telegram_channel_id = models.BigIntegerField(default=-1003967453350)
-    telegram_message_id = models.BigIntegerField()
-    telegram_file_id = models.CharField(max_length=500, null=True, blank=True)
-    file_size = models.BigIntegerField(null=True, blank=True)
-    mime_type = models.CharField(max_length=100, default='video/mp4')
-    
-    video_link = models.URLField(max_length=1000, null=True, blank=True)
+    # Metadata (API ကနေ Auto ဖြည့်ပေးမယ့်အပိုင်း)
+    file_size = models.CharField(max_length=100, null=True, blank=True)
     duration = models.CharField(max_length=100, null=True, blank=True)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def save(self, *args, **kwargs):
-        # Episode Slug ကို Auto ထုတ်ပေးရန် (ဥပမာ - squid-game-s1-e1)
-        if not self.slug:
-            self.slug = slugify(f"{self.season.series.title}-s{self.season.season_number}-e{self.episode_number}")
-        super().save(*args, **kwargs)
+    thumbnail_url = models.URLField(max_length=500, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.season.series.title} S{self.season.season_number} E{self.episode_number}"
+        return f"{self.movie.title} - {self.quality}"
 
-    class Meta:
-        verbose_name = "Episode"
-        verbose_name_plural = "Episodes"
-        ordering = ['episode_number']
+    @property
+    def embed_url(self):
+        return f"https://doodstream.com/e/{self.dood_file_code}"
+
+# --- DoodStream Metadata Fetcher (Background Thread) ---
+def fetch_dood_metadata(video_id):
+    try:
+        video = MovieVideo.objects.get(id=video_id)
+        api_key = settings.DOODSTREAM_API_KEY
+        url = f"https://doodapi.com/api/file/info?key={api_key}&file_code={video.dood_file_code}"
+        
+        # verify=False ထည့်လိုက်တာက SSL error ကို ကျော်သွားစေပါတယ်
+        response = requests.get(url, verify=False).json()
+        
+        if response['status'] == 200 and response['result']:
+            data = response['result'][0]
+            
+            # Size ကို MB ပြောင်းမယ်
+            size_bytes = int(data.get('size', 0))
+            size_mb = round(size_bytes / (1024 * 1024), 2)
+            
+            # Duration ကို format လုပ်မယ်
+            length_sec = int(data.get('length', 0))
+            h = length_sec // 3600
+            m = (length_sec % 3600) // 60
+            duration_str = f"{h}h {m}m" if h > 0 else f"{m}m"
+            
+            # DB မှာ အမှန်တကယ် သွားသိမ်းမယ်
+            video.file_size = f"{size_mb} MB"
+            video.duration = duration_str
+            video.thumbnail_url = data.get('single_img')
+            video.save(update_fields=['file_size', 'duration', 'thumbnail_url'])
+            
+            print(f"✅ Metadata Updated for {video.dood_file_code}")
+            
+    except Exception as e:
+        print(f"❌ DoodStream API Error: {str(e)}")
+        
+# --- Signal to trigger API Call ---
+@receiver(post_save, sender=MovieVideo)
+def trigger_metadata_fetch(sender, instance, created, **kwargs):
+    # အသစ်ဆောက်ချိန် ဒါမှမဟုတ် metadata မရှိသေးရင် API ခေါ်မယ်
+    if created or not instance.file_size:
+        thread = threading.Thread(target=fetch_dood_metadata, args=(instance.id,))
+        thread.daemon = True
+        thread.start()

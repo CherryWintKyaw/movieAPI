@@ -116,6 +116,17 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'movie_db',          # pgAdmin မှာ ခုနကဆောက်ခဲ့တဲ့ နာမည်
+#         'USER': 'postgres',          # PostgreSQL username (default က postgres)
+#         'PASSWORD': 'superuser', # မင်း pgAdmin သွင်းတုန်းက ပေးခဲ့တဲ့ password
+#         'HOST': '127.0.0.1',
+#         'PORT': '5432',
+#     }
+# }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -166,8 +177,5 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
-# settings.py အောက်ဆုံးမှာ ထည့်ရန်
 # settings.py
-TELEGRAM_API_ID = 32450438 
-TELEGRAM_API_HASH = '6def7f95aa507eb7250956f8b6514c9c'
-TELEGRAM_BOT_TOKEN = '8625977908:AAG51mTDAZcyv2Tmqj1epAdexLKKVBaGHfI'
+DOODSTREAM_API_KEY = '566427j88o2hlxnte5fpzs'

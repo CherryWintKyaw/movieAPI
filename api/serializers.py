@@ -91,100 +91,53 @@ class RatingSerializer(serializers.ModelSerializer):
         model = Rating
         fields = ['id', 'rating']
 
-# Main Movie Serializer
-class MovieSerializer(serializers.ModelSerializer):
-    # GET request လုပ်တဲ့အခါ ID အစား နာမည်/အချက်အလက် အပြည့်အစုံ မြင်ရစေရန် (Read Only)
-    country_detail = CountrySerializer(source='country', read_only=True)
-    rating_detail = RatingSerializer(source='rating', read_only=True)
-    release_year_detail = PremiereSerializer(source='release_year', read_only=True)
-    genres_detail = GenreSerializer(source='genres', many=True, read_only=True)
-    directors_detail = DirectorSerializer(source='directors', many=True, read_only=True)
-    casts_detail = CastSerializer(source='casts', many=True, read_only=True)
 
-    # Video Stream Link ကို အလိုအလျောက် generate လုပ်ပေးရန် (Optional)
-    stream_url = serializers.SerializerMethodField()
+from rest_framework import serializers
+from .models import Movie, MovieVideo, Genre, Country, Rating, Premiere, Director, Cast
+
+class MovieVideoSerializer(serializers.ModelSerializer):
+    # App UI မှာ သုံးဖို့ 
+    play_url = serializers.ReadOnlyField(source='embed_url')
+    
+    class Meta:
+        model = MovieVideo
+        fields = ['id', 'quality', 'play_url', 'file_size', 'duration', 'thumbnail_url']
+
+class MovieSerializer(serializers.ModelSerializer):
+    videos = MovieVideoSerializer(many=True, read_only=True)
+    genres = serializers.StringRelatedField(many=True)
+    country = serializers.StringRelatedField()
+    rating = serializers.StringRelatedField()
+    release_year = serializers.StringRelatedField()
+    directors = serializers.StringRelatedField(many=True)
+    casts = serializers.StringRelatedField(many=True)
 
     class Meta:
         model = Movie
         fields = [
-            'id', 'title', 'slug', 'description', 'poster',
-            'video_link', 'trailer_link', 'telegram_message_id', 
-             'telegram_channel_id', 'mime_type', 'file_size',
-            'country', 'country_detail',
-            'rating', 'rating_detail',
-            'release_year', 'release_year_detail',
-            'genres', 'genres_detail',
-            'directors', 'directors_detail',
-            'casts', 'casts_detail',
-            'duration', 'is_trending', 'view_count', 'stream_url',
-            'created_at', 'updated_at'
+            'id', 'title', 'slug', 'description', 'poster', 
+            'country', 'rating', 'release_year', 'genres', 
+            'directors', 'casts', 'is_trending', 'view_count', 
+            'videos', 'created_at'
         ]
-        # POST/PUT လုပ်တဲ့အခါ ID ပဲ ပို့လို့ရအောင် extra_kwargs သုံးနိုင်ပါတယ်
-        extra_kwargs = {
-            'country': {'write_only': True},
-            'rating': {'write_only': True},
-            'release_year': {'write_only': True},
-            'genres': {'write_only': True},
-            'directors': {'write_only': True},
-            'casts': {'write_only': True},
-            'slug': {'read_only': True}, # Save method ကနေ generate လုပ်မှာမို့လို့ပါ
-        }
 
-    def get_stream_url(self, obj):
-        # Telegram Stream API ရဲ့ URL ကို တစ်ခါတည်း ဆောက်ပေးလိုက်တာပါ
-        if obj.telegram_channel_id and obj.telegram_message_id:
-            # Domain နေရာမှာ သင့်ရဲ့ server domain ကို ပြောင်းပေးပါ
-            return f"/api/stream/{obj.telegram_channel_id}/{obj.telegram_message_id}/"
-        return None
 
-class EpisodeSerializer(serializers.ModelSerializer):
-    slug = serializers.SlugField(read_only=True)
-    class Meta:
-        model = Episode
-        fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
-
-class SeasonSerializer(serializers.ModelSerializer):
-    # Season အောက်မှာရှိတဲ့ Episode တွေကို list လိုက် မြင်ချင်ရင်
-    episodes = EpisodeSerializer(many=True, read_only=True)
-    
-    class Meta:
-        model = Season
-        fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
-
-from rest_framework import serializers
-from .models import Series, Genre, Cast, Director, Country, Rating, Premiere
-
-class SeriesSerializer(serializers.ModelSerializer):
-    # Foreign Key တွေကနေ နာမည်တွေကို string အနေနဲ့ တိုက်ရိုက်ဖတ်ပြဖို့ (Read Only)
-    country_name = serializers.CharField(source='country.name', read_only=True)
-    rating_name = serializers.CharField(source='rating.name', read_only=True)
-    release_year_name = serializers.CharField(source='release_year.name', read_only=True)
-
-    # ManyToMany Field တွေကို list အလိုက် နာမည်လေးတွေပဲ ပြချင်ရင်
-    genres_list = serializers.SlugRelatedField(
-        many=True,
-        read_only=True,
-        slug_field='genre',
-        source='genres'
-    )
+class MovieListSerializer(serializers.ModelSerializer):
+    # Detail မှာ သုံးသလိုမျိုး Field တွေ အကုန်ဒီမှာ ကြေညာပေးရပါမယ်
+    videos = MovieVideoSerializer(many=True, read_only=True)
+    genres = serializers.StringRelatedField(many=True)
+    country = serializers.StringRelatedField()
+    rating = serializers.StringRelatedField()
+    release_year = serializers.StringRelatedField()
+    directors = serializers.StringRelatedField(many=True)
+    casts = serializers.StringRelatedField(many=True)
 
     class Meta:
-        model = Series
-        # field အားလုံးကို ပြချင်ရင် '__all__' သုံးနိုင်ပါတယ်
-        # ဒါပေမဲ့ custom field တွေပါချင်ရင် list နဲ့ ရေးတာ ပိုကောင်းပါတယ်
+        model = Movie
+        # List မှာလည်း Detail ကလို Field တွေ အကုန်ပြခိုင်းလိုက်တာပါ
         fields = [
             'id', 'title', 'slug', 'description', 'poster', 
-            'status', 'is_trending', 'view_count',
-            'country', 'country_name', 
-            'rating', 'rating_name',
-            'release_year', 'release_year_name',
-            'genres', 'genres_list', 
-            'directors', 'casts', 
-            'created_at', 'updated_at'
+            'country', 'rating', 'release_year', 'genres', 
+            'directors', 'casts', 'is_trending', 'view_count', 
+            'videos', 'created_at'
         ]
-        
-        # ID တွေကိုပဲသုံးပြီး create/update လုပ်လို့ရအောင် field တွေကို default ထားပြီး
-        # name field တွေကိုပဲ read_only လုပ်ထားတာပါ
-        read_only_fields = ['id', 'slug', 'created_at', 'updated_at', 'view_count']

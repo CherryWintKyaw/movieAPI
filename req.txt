@@ -1,20 +1,31 @@
+altgraph @ file:///AppleInternal/Library/BuildRoots/4~CMzOugA1hT-4O2kZ5M4Og1VxAfLgir31_besAu0/Library/Caches/com.apple.xbs/Sources/python3/altgraph-0.17.2-py2.py3-none-any.whl
 asgiref==3.11.1
-cryptg==0.6.0
+certifi==2026.4.22
+charset-normalizer==3.4.7
+click==8.1.8
 dj-static==0.0.6
-Django==6.0.3
+Django==4.2.30
 django-cors-headers==4.9.0
-django-jazzmin==3.0.3
-django-phonenumber-field==8.4.0
+django-rest-framework==0.1.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
-pillow==12.1.1
+future @ file:///AppleInternal/Library/BuildRoots/4~CMzOugA1hT-4O2kZ5M4Og1VxAfLgir31_besAu0/Library/Caches/com.apple.xbs/Sources/python3/future-0.18.2-py3-none-any.whl
+h11==0.16.0
+idna==3.14
+macholib @ file:///AppleInternal/Library/BuildRoots/4~CMzOugA1hT-4O2kZ5M4Og1VxAfLgir31_besAu0/Library/Caches/com.apple.xbs/Sources/python3/macholib-1.15.2-py2.py3-none-any.whl
+pillow==11.3.0
+psycopg2-binary==2.9.12
 pyaes==1.6.1
 pyasn1==0.6.3
-PyJWT==2.11.0
-python-dotenv==1.2.2
+PyJWT==2.12.1
+requests==2.32.5
+rest-framework-simplejwt==0.0.2
 rsa==4.9.1
+six @ file:///AppleInternal/Library/BuildRoots/4~CMzOugA1hT-4O2kZ5M4Og1VxAfLgir31_besAu0/Library/Caches/com.apple.xbs/Sources/python3/six-1.15.0-py2.py3-none-any.whl
 sqlparse==0.5.5
 static-ranges==0.2.0
 static3==0.7.0
 Telethon==1.43.2
-tzdata==2025.3
+typing_extensions==4.15.0
+urllib3==2.6.3
+uvicorn==0.39.0

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import banner_view, country_view, genre_view, director_view, cast_view, premiere_view, rating_view, movie_view, series_view
+from .views import banner_view, country_view, genre_view, director_view, cast_view, premiere_view, rating_view, movie_view
 
 urlpatterns = [
     path('banner_list/', banner_view.banner_list, name='banner_list'),
@@ -51,26 +51,22 @@ urlpatterns = [
     path('rating_delete/<uuid:pk>/', rating_view.rating_delete, name='rating_delete'),
     path('rating_delete_all/', rating_view.rating_all_delete, name='rating_delete_all'),
 
-# --- Movie APIs ---
-    path('movie_list/', movie_view.movie_list, name='movie_list'),
-    path('movie_create/', movie_view.movie_create, name='movie_create'),
-    path('movie_detail/<uuid:pk>/', movie_view.movie_detail, name='movie_detail'),
-    path('movie_update/<uuid:pk>/', movie_view.movie_update, name='movie_update'),
-    path('movie_delete/<uuid:pk>/', movie_view.movie_delete, name='movie_delete'),
-    path('movie_delete_all/', movie_view.movie_all_delete, name='movie_delete_all'),
+# ၁။ Home Screen အတွက် ရုပ်ရှင်စာရင်း (All Movies)
+    # URL: /api/movies/
+    path('movies/', movie_view.movie_list, name='movie-list'),
 
-    # 🎬 App ဘက်ကနေ JSON Link လှမ်းတောင်းဖို့ (video_link ပါမည့် API)
-    path('movie_play/<uuid:pk>/', movie_view.movie_play_api, name='movie_play_api'),
+    # ၂။ Trending ဖြစ်နေတဲ့ ရုပ်ရှင်များ (Top Movies)
+    # URL: /api/movies/trending/
+    path('movies/trending/', movie_view.trending_movies, name='trending-movies'),
 
-    # 📺 တကယ့် Video Stream (Bytes) ထွက်လာမယ့်နေရာ (Internal logic က သုံးမှာဖြစ်သည်)
-    path('stream/movie/<uuid:pk>/', movie_view.movie_stream, name='movie_stream'),
+    # ၃။ ရုပ်ရှင်တစ်ခုချင်းစီရဲ့ အသေးစိတ် (Metadata အပြည့်အစုံ)
+    # URL: /api/movies/forrest-gump/
+    path('movies/<slug:slug>/', movie_view.movie_detail, name='movie-detail'),
+
+    # ၄။ ရုပ်ရှင်ရှာဖွေရန် (Search)
+    # URL: /api/search/?q=spiderman
+    path('search/', movie_view.search_movies, name='search-movies'),
 
 
-    path('series_list/', series_view.series_list, name='series_list'),
-    path('series_create/', series_view.series_create, name='series_create'),
-    path('series_detail/<uuid:pk>/', series_view.series_detail, name='series_detail'),
-    path('series_update/<uuid:pk>/', series_view.series_update, name='series_update'),
-    path('series_delete/<uuid:pk>/', series_view.series_delete, name='serie_delete'),
-    path('series_all_delete/', series_view.series_all_delete, name='series_all_delete'),
 ]
 
