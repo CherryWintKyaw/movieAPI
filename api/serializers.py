@@ -104,12 +104,15 @@ class MovieVideoSerializer(serializers.ModelSerializer):
 
 class MovieSerializer(serializers.ModelSerializer):
     videos = MovieVideoSerializer(many=True, read_only=True)
+    
+    # StringRelatedField အစား Serializer ကို ပြောင်းသုံးပါ
+    directors = DirectorSerializer(many=True, read_only=True)
+    casts = CastSerializer(many=True, read_only=True)
+    
     genres = serializers.StringRelatedField(many=True)
     country = serializers.StringRelatedField()
     rating = serializers.StringRelatedField()
     release_year = serializers.StringRelatedField()
-    directors = serializers.StringRelatedField(many=True)
-    casts = serializers.StringRelatedField(many=True)
 
     class Meta:
         model = Movie
