@@ -71,7 +71,9 @@ urlpatterns = [
     # GET /api/movies/video/1/
     path('movies/video/<int:video_id>/', movie_view.get_play_url, name='get-play-url'),
 
-    path('movies_create/', movie_view.movie_create_view, name='movie-create'),
+    path('movies_create/', movie_view.movie_create_view, name='movie_create'),
+
+    path('movies_update/<uuid:pk>/', movie_view.movie_update, name='movie_update'),
 
 
 ]

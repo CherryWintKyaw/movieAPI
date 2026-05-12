@@ -118,3 +118,36 @@ def movie_create_view(request):
             return Response(full_serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['PUT', 'PATCH'])
+def movie_update(request, pk):
+    movie = get_object_or_404(Movie, id=pk)
+    
+    serializer = MovieSerializer(
+        movie, 
+        data=request.data, 
+        partial=True 
+    )
+
+    if serializer.is_valid():
+        # ✅ Data တကယ် ပြောင်းလဲမှု ရှိမရှိ စစ်မယ်
+        if serializer.validated_data and serializer.instance:
+            # တကယ် save လိုက်ပြီ
+            serializer.save()
+            
+            return Response({
+                "status": "success",
+                "message": "Movie updated successfully!",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        else:
+            # ဘာမှ မပြင်ဘဲ ပို့လာရင် ပြမယ့် message
+            return Response({
+                "status": "no_change",
+                "message": "No changes detected.",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+    
+    # Validation error (ဥပမာ- title ကျန်ခဲ့တာမျိုး) ရှိရင် ပြမယ်
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
