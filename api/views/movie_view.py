@@ -34,8 +34,13 @@ def trending_movies(request):
 
 # ၃။ ရုပ်ရှင်အသေးစိတ် (Detail View)
 @api_view(['GET'])
-def movie_detail(request, slug):
-    movie = get_object_or_404(Movie, slug=slug)
+# views.py
+
+def movie_detail(request, movie_uuid):
+    # slug=slug အစား uuid=movie_uuid နဲ့ ရှာပါမယ်
+    movie = get_object_or_404(Movie, id=movie_uuid) 
+    
+    # ... ကျန်တဲ့ logic များ
     
     # User တစ်ခါဝင်ကြည့်ရင် View Count ကို ၁ တိုးမယ်
     movie.view_count += 1
@@ -69,3 +74,31 @@ def get_play_url(request, video_id):
         "file_size": video.file_size,
         "duration": video.duration
     })
+
+@api_view(['POST'])
+def movie_create_view(request):
+    if request.method == 'POST':
+        serializer = MovieSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            # Movie object ကို အရင် save လုပ်ပါမယ်
+            movie = serializer.save()
+            
+            # Many-to-Many fields တွေကို handle လုပ်ခြင်း (ဥပမာ- ID list နဲ့ လာခဲ့ရင်)
+            # request data ထဲက genres, directors, casts id တွေကို ယူပြီး ချိတ်ပေးခြင်း
+            genre_ids = request.data.get('genres_ids', [])
+            director_ids = request.data.get('directors_ids', [])
+            cast_ids = request.data.get('casts_ids', [])
+            
+            if genre_ids:
+                movie.genres.set(genre_ids)
+            if director_ids:
+                movie.directors.set(director_ids)
+            if cast_ids:
+                movie.casts.set(cast_ids)
+            
+            # အချက်အလက်အသစ်နဲ့အတူ ပြန်ပြပေးဖို့ serializer ကို ပြန်ခေါ်ပါ
+            full_serializer = MovieSerializer(movie)
+            return Response(full_serializer.data, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

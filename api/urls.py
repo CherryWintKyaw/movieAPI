@@ -65,11 +65,13 @@ urlpatterns = [
 
     # ၄။ ရုပ်ရှင်အသေးစိတ်ကြည့်ရန် (Slug ကို သုံးထားသည်)
     # GET /api/movies/movie-slug-name/
-    path('movies/<slug:slug>/', movie_view.movie_detail, name='movie-detail'),
-
+    # urls.py
+    path('movies_detail/<uuid:movie_uuid>/', movie_view.movie_detail, name='movie-detail'),
 # ၅။ Video Play URL သီးသန့်ယူရန် (Optional)
     # GET /api/movies/video/1/
     path('movies/video/<int:video_id>/', movie_view.get_play_url, name='get-play-url'),
+
+    path('movies_create/', movie_view.movie_create_view, name='movie-create'),
 
 
 ]

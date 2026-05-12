@@ -104,15 +104,14 @@ class MovieVideoSerializer(serializers.ModelSerializer):
 
 class MovieSerializer(serializers.ModelSerializer):
     videos = MovieVideoSerializer(many=True, read_only=True)
-    
-    # StringRelatedField အစား Serializer ကို ပြောင်းသုံးပါ
     directors = DirectorSerializer(many=True, read_only=True)
     casts = CastSerializer(many=True, read_only=True)
     
-    genres = serializers.StringRelatedField(many=True)
-    country = serializers.StringRelatedField()
-    rating = serializers.StringRelatedField()
-    release_year = serializers.StringRelatedField()
+    # Use PrimaryKeyRelatedField so you can send ID numbers in your POST request
+    genres = serializers.PrimaryKeyRelatedField(many=True, queryset=Genre.objects.all())
+    country = serializers.PrimaryKeyRelatedField(queryset=Country.objects.all())
+    rating = serializers.PrimaryKeyRelatedField(queryset=Rating.objects.all())
+    release_year = serializers.PrimaryKeyRelatedField(queryset=Premiere.objects.all())
 
     class Meta:
         model = Movie
