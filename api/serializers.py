@@ -107,7 +107,7 @@ class MovieSerializer(serializers.ModelSerializer):
     directors = DirectorSerializer(many=True, read_only=True)
     casts = CastSerializer(many=True, read_only=True)
     
-    # Use PrimaryKeyRelatedField so you can send ID numbers in your POST request
+    # POST/PUT အတွက် ID လက်ခံဖို့ ထားထားမယ်
     genres = serializers.PrimaryKeyRelatedField(many=True, queryset=Genre.objects.all())
     country = serializers.PrimaryKeyRelatedField(queryset=Country.objects.all())
     rating = serializers.PrimaryKeyRelatedField(queryset=Rating.objects.all())
@@ -121,3 +121,23 @@ class MovieSerializer(serializers.ModelSerializer):
             'directors', 'casts', 'is_trending', 'view_count', 
             'videos', 'created_at'
         ]
+
+    # ✅ ဒီအပိုင်းကို ထည့်ပေးပါ (ဒေတာ ပြန်ထုတ်ပေးတဲ့အခါ နာမည်ပြောင်းပေးတာ)
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        # Rating နာမည်ပြောင်းမယ် (မင်းရဲ့ model field name က 'rating' ဖြစ်မယ်လို့ ယူဆပါတယ်)
+        if instance.rating:
+            response['rating'] = str(instance.rating) 
+        
+        # Release Year နာမည်ပြောင်းမယ်
+        if instance.release_year:
+            response['release_year'] = str(instance.release_year)
+            
+        # Country နာမည်ပြောင်းမယ်
+        if instance.country:
+            response['country'] = str(instance.country)
+
+        # Genres ကို နာမည် list အနေနဲ့ ပြောင်းမယ်
+        response['genres'] = [str(genre) for genre in instance.genres.all()]
+        
+        return response
