@@ -57,9 +57,6 @@ class RatingSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at']
 
-from rest_framework import serializers
-from .models import Movie, Country, Genre, Director, Cast, Premiere, Rating
-
 # Master Data Serializers (ချိတ်ဆက်ထားတဲ့ Model များအတွက်)
 class CountrySerializer(serializers.ModelSerializer):
     class Meta:
