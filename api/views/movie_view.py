@@ -4,15 +4,26 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from ..models import Movie, MovieVideo
 from ..serializers import MovieSerializer
+from rest_framework.pagination import PageNumberPagination
 
 # ၁။ ရုပ်ရှင်အားလုံးစာရင်း (Home Screen အတွက်)
 @api_view(['GET'])
 def movie_list(request):
-    # ရုပ်ရှင်အားလုံးကို အသစ်တင်တဲ့ရက်စွဲအလိုက် စီထုတ်မယ်
+    # ၁. Queryset ကို အရင်ယူမယ်
     movies = Movie.objects.all().order_by('-created_at')
-    # MovieSerializer ကိုသုံးလို့ Video Detail တွေအကုန် ပါလာပါလိမ့်မယ်
-    serializer = MovieSerializer(movies, many=True) 
-    return Response(serializer.data)
+    
+    # ၂. Pagination Object ကို တည်ဆောက်မယ်
+    paginator = PageNumberPagination()
+    paginator.page_size = 2  # တစ်မျက်နှာမှာ ပြချင်တဲ့ item အရေအတွက်
+    
+    # ၃. ရလာတဲ့ movies ထဲက သက်ဆိုင်ရာ page အတွက် data ကို ခွဲထုတ်မယ်
+    result_page = paginator.paginate_queryset(movies, request)
+    
+    # ၄. Serializer ထဲကို result_page (ခွဲထုတ်ပြီးသား data) ကို ထည့်မယ်
+    serializer = MovieSerializer(result_page, many=True)
+    
+    # ၅. အဖြေပြန်ပေးတဲ့အခါ pagination metadata (next, previous, count) တွေပါအောင် ပြန်ပေးမယ်
+    return paginator.get_paginated_response(serializer.data)
 
 # ၂။ Trending ဖြစ်နေတဲ့ ရုပ်ရှင်များ (၁၀ ကားစာ)
 @api_view(['GET'])
