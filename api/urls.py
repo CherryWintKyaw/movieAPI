@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import banner_view, country_view, genre_view, director_view, cast_view, premiere_view, rating_view, movie_view, series_view,season_view
+from .views import banner_view, country_view, genre_view, director_view, cast_view, premiere_view, rating_view, movie_view, series_view,season_view,episode_view
 
 urlpatterns = [
     path('banner_list/', banner_view.banner_list, name='banner_list'),
@@ -90,6 +90,13 @@ urlpatterns = [
     path('season_update/<uuid:pk>/', season_view.season_update, name='season_update'),
     path('season_delete/<uuid:pk>/', season_view.season_delete, name='season_delete'),
     path('season_delete_all/', season_view.season_delete_all, name='season_delete_all'),
+
+    path('episode_list/', episode_view.episode_list, name='episode_list'),
+    path('episode_create/', episode_view.episode_create, name='episode_create'),
+    path('episode_detail/<uuid:pk>/', episode_view.episode_detail, name='episode_detail'),
+    path('episode_update/<uuid:pk>/', episode_view.episode_update, name='episode_update'),
+    path('episode_delete/<uuid:pk>/', episode_view.episode_delete, name='episode_delete'),
+    path('episode_delete_all/', episode_view.episode_delete_all, name='episode_delete_all'),
 
 
 ]

@@ -227,3 +227,53 @@ class SeasonSerializer(serializers.ModelSerializer):
                 )
         
         return data
+    
+#episode
+class EpisodeSerializer(serializers.ModelSerializer):
+    # POST/PUT လုပ်တဲ့အခါ ဘယ် Season အောက်ကလဲဆိုတာ သိဖို့ Season ID လက်ခံမယ်
+    season = serializers.PrimaryKeyRelatedField(queryset=Season.objects.all())
+
+    class Meta:
+        model = Episode
+        fields = [
+            'id', 
+            'season', 
+            'episode_number', 
+            'title', 
+            'video_file', 
+            'view_count', 
+            'created_at'
+        ]
+
+    def to_representation(self, instance):
+        """
+        Data ပြန်ထုတ်ပြတဲ့အခါ Season ID အစား Season Number နဲ့ Series Title ကိုပါ ပြသခြင်း
+        """
+        response = super().to_representation(instance)
+        
+        if instance.season:
+            # Season အချက်အလက်
+            response['season_number'] = instance.season.season_number
+            # Series အချက်အလက် (Relationship ကဆင့်တက်ကြည့်တာပါ)
+            response['series_title'] = instance.season.series.title
+            
+            # response['season'] နေရာမှာပဲ စာသားပြချင်ရင်
+            response['season'] = f"Season {instance.season.season_number}"
+            
+        return response
+
+    def validate(self, data):
+        """
+        Season တစ်ခုတည်းမှာ Episode Number ထပ်မနေအောင် စစ်ဆေးခြင်း
+        """
+        season = data.get('season')
+        episode_number = data.get('episode_number')
+
+        # အသစ်ဆောက်ရင် (သို့) နံပါတ်ပြောင်းရင် စစ်မယ်
+        if Episode.objects.filter(season=season, episode_number=episode_number).exists():
+            if not self.instance or self.instance.episode_number != episode_number:
+                raise serializers.ValidationError(
+                    f"Episode {episode_number} already exists in this season."
+                )
+        
+        return data
