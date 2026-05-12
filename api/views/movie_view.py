@@ -14,22 +14,25 @@ from django.db.models.functions import Cast # ဒါလေး ထပ်ထည့
 @api_view(['GET'])
 def movie_list(request):
     search_query = request.query_params.get('search', None)
-    movies = Movie.objects.all().order_by('-created_at')
+    
+    # ၁။ movies ယူတဲ့အခါ Relationship တွေကိုပါ တစ်ခါတည်းဆွဲယူထားမယ် (Speed ပိုမြန်အောင်)
+    movies = Movie.objects.prefetch_related('casts', 'genres', 'directors').select_related('country', 'release_year').all().order_by('-created_at')
 
     if search_query:
-        # release_year ကို Integer ကနေ စာသား (CharField) အဖြစ် ခေတ္တပြောင်းပြီး ရှာမယ်
+        # ၂။ release_year__year (Integer) ကို စာသားပြောင်းပြီး ရှာမယ်
         movies = movies.annotate(
-            year_str=Cast('release_year', CharField())
+            year_str=Cast('release_year__year', CharField())
         ).filter(
-            Q(title__icontains=search_query) |
-            Q(description__icontains=search_query) |
-            Q(casts__cast__icontains=search_query) |
-            Q(directors__director__icontains=search_query) |
-            Q(genres__genre__icontains=search_query) |
-            Q(country__name__icontains=search_query) |
-            Q(year_str__icontains=search_query) # ပြောင်းလဲထားတဲ့ year_str နဲ့ ရှာမယ်
+            Q(title__icontains=search_query) |            # Movie.title
+            Q(description__icontains=search_query) |      # Movie.description
+            Q(casts__cast__icontains=search_query) |      # Cast.cast
+            Q(directors__director__icontains=search_query)|# Director.director
+            Q(genres__genre__icontains=search_query) |    # Genre.genre
+            Q(country__country__icontains=search_query) | # Country.country (မင်း model ထဲက နာမည်)
+            Q(year_str__icontains=search_query)           # Premiere.year (Cast လုပ်ထားတာ)
         ).distinct()
 
+    # ၃။ Pagination
     paginator = PageNumberPagination()
     paginator.page_size = 10 
     
