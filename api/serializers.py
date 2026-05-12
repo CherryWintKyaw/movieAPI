@@ -277,3 +277,39 @@ class EpisodeSerializer(serializers.ModelSerializer):
                 )
         
         return data
+    
+# Episode Serializer (အခြေခံ အချက်အလက်ပဲ ပြမယ်)
+class EpisodeDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Episode
+        fields = ['id', 'episode_number', 'title', 'video_file', 'view_count']
+
+# Season Serializer (Episodes တွေကို တွဲထည့်မယ်)
+class SeasonDetailSerializer(serializers.ModelSerializer):
+    episodes = EpisodeDetailSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Season
+        fields = ['id', 'season_number', 'description', 'episodes']
+
+# Main Series Serializer (Seasons တွေကို တွဲထည့်မယ်)
+class SeriesDetailSerializer(serializers.ModelSerializer):
+    seasons = SeasonDetailSerializer(many=True, read_only=True) # Nested Relation
+    
+    # ကျန်တဲ့ fields တွေကတော့ အရင်အတိုင်းပဲ
+    class Meta:
+        model = Series
+        fields = [
+            'id', 'title', 'slug', 'description', 'poster', 
+            'country', 'rating', 'release_year', 'genres', 
+            'directors', 'casts', 'is_trending', 'view_count', 
+            'seasons', 'created_at'
+        ]
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        # အရင်ရေးထားတဲ့ ID to Name ပြောင်းတဲ့ logic တွေ ဒီမှာ ဆက်သုံးလို့ရပါတယ်
+        if instance.country: response['country'] = str(instance.country)
+        if instance.rating: response['rating'] = str(instance.rating)
+        response['genres'] = [str(g) for g in instance.genres.all()]
+        return response

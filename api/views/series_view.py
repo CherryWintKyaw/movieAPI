@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from ..models import Series
-from ..serializers import SeriesSerializer
+from ..serializers import SeriesSerializer, SeriesDetailSerializer
 
 from rest_framework.pagination import PageNumberPagination
 
@@ -39,7 +39,7 @@ def series_create(request):
 @api_view(['GET'])
 def series_detail(request, pk):
     series_obj = get_object_or_404(Series, id=pk)
-    serializer = SeriesSerializer(series_obj)
+    serializer = SeriesDetailSerializer(series_obj)
     return Response(serializer.data)
 
 @api_view(['PUT', 'PATCH'])
