@@ -151,3 +151,33 @@ def movie_update(request, pk):
     
     # Validation error (ဥပမာ- title ကျန်ခဲ့တာမျိုး) ရှိရင် ပြမယ်
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def movie_delete(request, pk):
+    movie = get_object_or_404(Movie, id=pk)
+    movie_title = movie.title  # ဖျက်ပြီးရင် သုံးဖို့ title ကို ခဏသိမ်းထားမယ်
+    movie.delete()
+    
+    return Response({
+        "status": "success",
+        "message": f"Movie '{movie_title}' has been deleted successfully!"
+    }, status=status.HTTP_200_OK) # 👈 204 အစား 200 ကို သုံးပါ
+
+@api_view(['DELETE'])
+def movie_delete_all(request):
+    movies = Movie.objects.all()
+    count = movies.count()
+    
+    if count == 0:
+        return Response({
+            "status": "info",
+            "message": "There are no movies to delete."
+        }, status=status.HTTP_404_NOT_FOUND)
+        
+    movies.delete()
+    
+    return Response({
+        "status": "success",
+        "message": f"All {count} movies have been deleted successfully!"
+    }, status=status.HTTP_200_OK) # 👈 204 အစား 200 ကို သုံးပါ

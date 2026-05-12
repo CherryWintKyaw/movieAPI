@@ -74,6 +74,8 @@ urlpatterns = [
     path('movies_create/', movie_view.movie_create_view, name='movie_create'),
 
     path('movies_update/<uuid:pk>/', movie_view.movie_update, name='movie_update'),
+    path('movies_delete/<uuid:pk>/', movie_view.movie_delete, name='movie_delete'),
+    path('movies_delete_all/', movie_view.movie_delete_all, name='movie_delete_all'),
 
 
 ]
