@@ -92,16 +92,15 @@ class RatingSerializer(serializers.ModelSerializer):
         fields = ['id', 'rating']
 
 
-from rest_framework import serializers
-from .models import Movie, MovieVideo, Genre, Country, Rating, Premiere, Director, Cast
+# api/serializers.py
 
 class MovieVideoSerializer(serializers.ModelSerializer):
-    # App UI မှာ သုံးဖို့ 
     play_url = serializers.ReadOnlyField(source='embed_url')
     
     class Meta:
         model = MovieVideo
-        fields = ['id', 'quality', 'play_url', 'file_size', 'duration', 'thumbnail_url']
+        # thumbnail_url ကို ဖြုတ်လိုက်ပါပြီ
+        fields = ['id', 'quality', 'play_url', 'file_size', 'duration']
 
 class MovieSerializer(serializers.ModelSerializer):
     videos = MovieVideoSerializer(many=True, read_only=True)
@@ -114,27 +113,6 @@ class MovieSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Movie
-        fields = [
-            'id', 'title', 'slug', 'description', 'poster', 
-            'country', 'rating', 'release_year', 'genres', 
-            'directors', 'casts', 'is_trending', 'view_count', 
-            'videos', 'created_at'
-        ]
-
-
-class MovieListSerializer(serializers.ModelSerializer):
-    # Detail မှာ သုံးသလိုမျိုး Field တွေ အကုန်ဒီမှာ ကြေညာပေးရပါမယ်
-    videos = MovieVideoSerializer(many=True, read_only=True)
-    genres = serializers.StringRelatedField(many=True)
-    country = serializers.StringRelatedField()
-    rating = serializers.StringRelatedField()
-    release_year = serializers.StringRelatedField()
-    directors = serializers.StringRelatedField(many=True)
-    casts = serializers.StringRelatedField(many=True)
-
-    class Meta:
-        model = Movie
-        # List မှာလည်း Detail ကလို Field တွေ အကုန်ပြခိုင်းလိုက်တာပါ
         fields = [
             'id', 'title', 'slug', 'description', 'poster', 
             'country', 'rating', 'release_year', 'genres', 

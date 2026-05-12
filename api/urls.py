@@ -51,21 +51,25 @@ urlpatterns = [
     path('rating_delete/<uuid:pk>/', rating_view.rating_delete, name='rating_delete'),
     path('rating_delete_all/', rating_view.rating_all_delete, name='rating_delete_all'),
 
-# ၁။ Home Screen အတွက် ရုပ်ရှင်စာရင်း (All Movies)
-    # URL: /api/movies/
-    path('movies/', movie_view.movie_list, name='movie-list'),
+# ၁။ ရုပ်ရှင်အားလုံးစာရင်း (Home Screen အတွက်)
+    # GET /api/movies/
+    path('movies_list/', movie_view.movie_list, name='movie-list'),
 
-    # ၂။ Trending ဖြစ်နေတဲ့ ရုပ်ရှင်များ (Top Movies)
-    # URL: /api/movies/trending/
+    # ၂။ Trending ဖြစ်နေသော ရုပ်ရှင်များ
+    # GET /api/movies/trending/
     path('movies/trending/', movie_view.trending_movies, name='trending-movies'),
 
-    # ၃။ ရုပ်ရှင်တစ်ခုချင်းစီရဲ့ အသေးစိတ် (Metadata အပြည့်အစုံ)
-    # URL: /api/movies/forrest-gump/
+    # ၃။ ရုပ်ရှင်ရှာဖွေရန် API
+    # GET /api/movies/search/?q=...
+    path('movies/search/', movie_view.search_movies, name='search-movies'),
+
+    # ၄။ ရုပ်ရှင်အသေးစိတ်ကြည့်ရန် (Slug ကို သုံးထားသည်)
+    # GET /api/movies/movie-slug-name/
     path('movies/<slug:slug>/', movie_view.movie_detail, name='movie-detail'),
 
-    # ၄။ ရုပ်ရှင်ရှာဖွေရန် (Search)
-    # URL: /api/search/?q=spiderman
-    path('search/', movie_view.search_movies, name='search-movies'),
+# ၅။ Video Play URL သီးသန့်ယူရန် (Optional)
+    # GET /api/movies/video/1/
+    path('movies/video/<int:video_id>/', movie_view.get_play_url, name='get-play-url'),
 
 
 ]
