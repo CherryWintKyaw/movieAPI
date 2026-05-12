@@ -17,19 +17,22 @@ def movie_list(request):
     # ၂။ အခြေခံ Queryset (Latest first)
     movies = Movie.objects.all().order_by('-created_at')
 
-    # 🚀 ၃။ Search ပါလာရင် Global Search အရင်လုပ်မယ်
+    # 🚀 ၃။ Search ပါလာရင် Global Search လုပ်မယ် (Country နဲ့ Years ပါဝင်သည်)
     if search_query:
+        # search_query က '2024' လိုမျိုး ကိန်းဂဏန်းဖြစ်နေရင်လည်း စစ်ပေးနိုင်ဖို့ __icontains ကိုပဲ သုံးထားပါတယ်
         movies = movies.filter(
-            Q(title__icontains=search_query) |
-            Q(description__icontains=search_query) |
-            Q(casts__cast__icontains=search_query) |
-            Q(directors__director__icontains=search_query) |
-            Q(genres__genre__icontains=search_query)
+            Q(title__icontains=search_query) |            # ရုပ်ရှင်အမည်
+            Q(description__icontains=search_query) |      # အညွှန်း
+            Q(casts__cast__icontains=search_query) |      # မင်းသား/မင်းသမီး
+            Q(directors__director__icontains=search_query)|# ဒါရိုက်တာ
+            Q(genres__genre__icontains=search_query) |    # အမျိုးအစား (Genre)
+            Q(country__name__icontains=search_query) |    # နိုင်ငံ (Country)
+            Q(release_year__icontains=search_query)       # ဖြန့်ချိတဲ့ခုနှစ် (Release Year)
         ).distinct()
 
     # ၄။ Pagination Object တည်ဆောက်မယ်
     paginator = PageNumberPagination()
-    paginator.page_size = 10  # စမ်းသပ်ဖို့ ၂ ခုပဲ ထားတာ နည်းလွန်းရင် ၁၀ လောက် ပြောင်းထားပါ
+    paginator.page_size = 10 
     
     # ၅။ Filter လုပ်ပြီးသား movies ထဲကမှ pagination ခွဲထုတ်မယ်
     result_page = paginator.paginate_queryset(movies, request)
