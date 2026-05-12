@@ -7,40 +7,35 @@ from ..serializers import MovieSerializer
 from rest_framework.pagination import PageNumberPagination
 
 # ၁။ ရုပ်ရှင်အားလုံးစာရင်း (Home Screen အတွက်)
-from django.db.models import Q
+
+from django.db.models import Q, CharField
+from django.db.models.functions import Cast # ဒါလေး ထပ်ထည့်ရမယ်
 
 @api_view(['GET'])
 def movie_list(request):
-    # ၁။ Query Params ကနေ search keyword ကို ယူမယ်
     search_query = request.query_params.get('search', None)
-    
-    # ၂။ အခြေခံ Queryset (Latest first)
     movies = Movie.objects.all().order_by('-created_at')
 
-    # 🚀 ၃။ Search ပါလာရင် Global Search လုပ်မယ် (Country နဲ့ Years ပါဝင်သည်)
     if search_query:
-        # search_query က '2024' လိုမျိုး ကိန်းဂဏန်းဖြစ်နေရင်လည်း စစ်ပေးနိုင်ဖို့ __icontains ကိုပဲ သုံးထားပါတယ်
-        movies = movies.filter(
-            Q(title__icontains=search_query) |            # ရုပ်ရှင်အမည်
-            Q(description__icontains=search_query) |      # အညွှန်း
-            Q(casts__cast__icontains=search_query) |      # မင်းသား/မင်းသမီး
-            Q(directors__director__icontains=search_query)|# ဒါရိုက်တာ
-            Q(genres__genre__icontains=search_query) |    # အမျိုးအစား (Genre)
-            Q(country__name__icontains=search_query) |    # နိုင်ငံ (Country)
-            Q(release_year__icontains=search_query)       # ဖြန့်ချိတဲ့ခုနှစ် (Release Year)
+        # release_year ကို Integer ကနေ စာသား (CharField) အဖြစ် ခေတ္တပြောင်းပြီး ရှာမယ်
+        movies = movies.annotate(
+            year_str=Cast('release_year', CharField())
+        ).filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(casts__cast__icontains=search_query) |
+            Q(directors__director__icontains=search_query) |
+            Q(genres__genre__icontains=search_query) |
+            Q(country__name__icontains=search_query) |
+            Q(year_str__icontains=search_query) # ပြောင်းလဲထားတဲ့ year_str နဲ့ ရှာမယ်
         ).distinct()
 
-    # ၄။ Pagination Object တည်ဆောက်မယ်
     paginator = PageNumberPagination()
     paginator.page_size = 10 
     
-    # ၅။ Filter လုပ်ပြီးသား movies ထဲကမှ pagination ခွဲထုတ်မယ်
     result_page = paginator.paginate_queryset(movies, request)
-    
-    # ၆။ Serializer ထဲ ထည့်မယ်
     serializer = MovieSerializer(result_page, many=True)
     
-    # ၇။ Pagination Metadata နဲ့အတူ အဖြေပြန်ပေးမယ်
     return paginator.get_paginated_response(serializer.data)
 
 # ၂။ Trending ဖြစ်နေတဲ့ ရုပ်ရှင်များ (၁၀ ကားစာ)
