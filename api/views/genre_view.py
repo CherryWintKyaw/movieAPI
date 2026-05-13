@@ -5,18 +5,31 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from ..models import Genre
 from ..serializers import GenreSerializer
+from django.db.models import Q
 
 # 1. Genre List with Pagination
 @api_view(['GET'])
 def genre_list(request):
     """
-    Genre (Action, Comedy, etc.) အားလုံးကို Pagination ဖြင့် ပြသခြင်း
+    ရုပ်ရှင်အမျိုးအစား (Genre) များကို ID (UUID) သို့မဟုတ် နာမည်ဖြင့် 
+    Search လုပ်နိုင်ပြီး Pagination ဖြင့် ပြသခြင်း
     """
+    # 1. Genre အားလုံးကို အက္ခရာစဉ်အလိုက် ယူမယ်
     genres = Genre.objects.all().order_by('genre')
     
+    # 2. Search Logic (ID နှင့် Genre Field အားလုံးကို ရှာဖွေခြင်း)
+    search_query = request.query_params.get('search', None)
+    if search_query:
+        genres = genres.filter(
+            Q(id__icontains=search_query) | # UUID ID ကို ရှာမယ်
+            Q(genre__icontains=search_query) # Genre နာမည် (Action, Comedy, etc.) ကို ရှာမယ်
+        ).distinct()
+
+    # 3. Pagination သတ်မှတ်မယ် (တစ်မျက်နှာလျှင် ၁၀ ခု)
     paginator = PageNumberPagination()
-    paginator.page_size = 10  # တစ်မျက်နှာလျှင် ၁၀ ခုစီပြသမည်
+    paginator.page_size = 10
     
+    # 4. Result ကို Serialize လုပ်ပြီး ပြန်ပေးမယ်
     result_page = paginator.paginate_queryset(genres, request)
     serializer = GenreSerializer(result_page, many=True)
     
