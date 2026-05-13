@@ -108,8 +108,11 @@ urlpatterns = [
 
     path('favorites/', favorite_view.favorite_manager, name='favorite-manager'),
 
+    # ၁။ Mobile ကနေ Token လှမ်းပို့ဖို့ (ဒါက မင်းရေးထားပြီးသားဟာ)
     path('fcm-devices/', fcm_view.register_fcm_token, name='register-fcm-token'),
 
+    # ၂။ React Admin ကနေ Noti လှမ်းပို့ဖို့ (Broadcast API)
+    path('fcm-send-admin/', fcm_view.admin_broadcast_noti, name='fcm-admin-send'),
 
 ]
 

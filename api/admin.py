@@ -109,3 +109,24 @@ class EpisodeAdmin(admin.ModelAdmin):
     @admin.display(description='Season')
     def get_season_number(self, obj):
         return obj.season.season_number
+    
+
+
+from .models import FCMDevice
+from .views.fcm_view import send_push_notification # လမ်းကြောင်းမှန်အောင် ပြင်ပါ
+
+@admin.register(FCMDevice)
+class FCMDeviceAdmin(admin.ModelAdmin):
+    list_display = ['user', 'device_type', 'created_at']
+    actions = ['send_test_notification']
+
+    @admin.action(description='ရွေးထားတဲ့ Device များထံ Test Noti ပို့ရန်')
+    def send_test_notification(self, request, queryset):
+        for device in queryset:
+            if device.user:
+                result = send_push_notification(
+                    user_id=device.user.id,
+                    title="Popcorn Noti",
+                    body="ဒါက Admin panel ကနေ စမ်းပို့တာပါ!"
+                )
+        self.message_user(request, "Notifications are being processed.")
