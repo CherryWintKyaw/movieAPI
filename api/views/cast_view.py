@@ -6,15 +6,23 @@ from django.shortcuts import get_object_or_404
 from django.db import IntegrityError # IntegrityError ကို import လုပ်ပါ
 from ..models import Cast
 from ..serializers import CastSerializer
+from django.db.models import Q
 
 # 1. Cast List with Pagination
 @api_view(['GET'])
 def cast_list(request):
-    """
-    သရုပ်ဆောင်အားလုံးကို Pagination ဖြင့် ပြသခြင်း
-    """
-    casts = Cast.objects.all().order_by('cast')
+    search_query = request.query_params.get('search', None)
     
+    # Cast အားလုံးကို ယူမယ်
+    casts = Cast.objects.all().order_by('cast')
+
+    if search_query:
+        # ID (UUID) နဲ့ နာမည်ကို ရှာမယ်
+        casts = casts.filter(
+            Q(id__icontains=search_query) | 
+            Q(cast__icontains=search_query)
+        ).distinct()
+    # Pagination
     paginator = PageNumberPagination()
     paginator.page_size = 10
     
