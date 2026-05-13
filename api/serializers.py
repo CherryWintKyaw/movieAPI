@@ -94,18 +94,21 @@ class RatingSerializer(serializers.ModelSerializer):
 class MovieVideoSerializer(serializers.ModelSerializer):
     play_url = serializers.ReadOnlyField(source='embed_url')
     
-    # Movie ID ကို လက်ခံဖို့ write_only field ထည့်ပါ
-    movie = serializers.PrimaryKeyRelatedField(queryset=Movie.objects.all(), write_only=True)
-
     class Meta:
         model = MovieVideo
-        fields = ['id', 'movie', 'quality', 'play_url', 'dood_file_code', 'file_size', 'duration']
+        # thumbnail_url ကို ဖြုတ်လိုက်ပါပြီ
+        fields = ['id', 'quality', 'play_url', 'file_size', 'duration']
 
 class MovieSerializer(serializers.ModelSerializer):
-    # read_only=True ပြောင်းလိုက်ပါ (ဒါဆိုရင် create လုပ်တဲ့အခါ video ထည့်စရာမလိုတော့ဘူး)
-    videos = MovieVideoSerializer(many=True, read_only=True) 
+    videos = MovieVideoSerializer(many=True, read_only=True)
+    directors = DirectorSerializer(many=True, read_only=True)
+    casts = CastSerializer(many=True, read_only=True)
     
-    # ... ကျန်တဲ့ directors, casts စတာတွေကတော့ အရင်အတိုင်းပဲ ...
+    # POST/PUT အတွက် ID လက်ခံဖို့ ထားထားမယ်
+    genres = serializers.PrimaryKeyRelatedField(many=True, queryset=Genre.objects.all())
+    country = serializers.PrimaryKeyRelatedField(queryset=Country.objects.all())
+    rating = serializers.PrimaryKeyRelatedField(queryset=Rating.objects.all())
+    release_year = serializers.PrimaryKeyRelatedField(queryset=Premiere.objects.all())
 
     class Meta:
         model = Movie
@@ -115,177 +118,127 @@ class MovieSerializer(serializers.ModelSerializer):
             'directors', 'casts', 'is_trending', 'view_count', 
             'videos', 'created_at'
         ]
-    #series
 
-class SeriesSerializer(serializers.ModelSerializer):
-    # POST/PUT အတွက် ID လက်ခံရန် PrimaryKeyRelatedField သုံးမည်
-    genres = serializers.PrimaryKeyRelatedField(many=True, queryset=Genre.objects.all())
-    country = serializers.PrimaryKeyRelatedField(queryset=Country.objects.all())
-    rating = serializers.PrimaryKeyRelatedField(queryset=Rating.objects.all())
-    release_year = serializers.PrimaryKeyRelatedField(queryset=Premiere.objects.all())
-
-    class Meta:
-        model = Series
-        fields = '__all__'
-        read_only_fields = ['slug']
-
-    # Title ရှိပြီးသားလားလို့ API ကနေ စစ်ပေးမယ့် function
-    def validate_title(self, value):
-        if Series.objects.filter(title__iexact=value).exists():
-            raise serializers.ValidationError("A series with this title already exists.")
-        return value
-
+    # ✅ ဒီအပိုင်းကို ထည့်ပေးပါ (ဒေတာ ပြန်ထုတ်ပေးတဲ့အခါ နာမည်ပြောင်းပေးတာ)
     def to_representation(self, instance):
-        """
-        Data ပြန်ထုတ်ပေးတဲ့အခါ ID တွေအစား နာမည်တွေ ပြောင်းပေးတာ
-        """
         response = super().to_representation(instance)
-        
-        # Foreign Key Fields များကို String အဖြစ်ပြောင်းလဲခြင်း
+        # Rating နာမည်ပြောင်းမယ် (မင်းရဲ့ model field name က 'rating' ဖြစ်မယ်လို့ ယူဆပါတယ်)
         if instance.rating:
-            response['rating'] = str(instance.rating)
+            response['rating'] = str(instance.rating) 
         
+        # Release Year နာမည်ပြောင်းမယ်
         if instance.release_year:
             response['release_year'] = str(instance.release_year)
             
+        # Country နာမည်ပြောင်းမယ်
         if instance.country:
             response['country'] = str(instance.country)
 
-        # Many-to-Many Fields (Genres, Directors, Casts) များကို List of Names အဖြစ်ပြောင်းခြင်း
+        # Genres ကို နာမည် list အနေနဲ့ ပြောင်းမယ်
         response['genres'] = [str(genre) for genre in instance.genres.all()]
-        response['directors'] = [str(director) for director in instance.directors.all()]
-        response['casts'] = [str(cast) for cast in instance.casts.all()]
         
         return response
-    
-    #season
-class SeasonSerializer(serializers.ModelSerializer):
-    # POST/PUT လုပ်တဲ့အခါ Series ID ကို လက်ခံဖို့
-    series = serializers.PrimaryKeyRelatedField(queryset=Series.objects.all())
+    #series
 
-    class Meta:
-        model = Season
-        fields = [
-            'id', 
-            'series', 
-            'season_number', 
-            'description', 
-            'created_at'
-        ]
+from rest_framework import serializers
+from .models import Series, Season, Episode, Genre, Country, Rating, Premiere
 
-    def to_representation(self, instance):
-        """
-        Data ပြန်ထုတ်ပြတဲ့အခါ Series ID အစား Series နာမည်ကို ပြောင်းလဲပြသခြင်း
-        """
-        response = super().to_representation(instance)
-        
-        # series object ရှိမရှိ စစ်ဆေးပြီး String အဖြစ်ပြောင်းမယ်
-        if instance.series:
-            response['series_name'] = instance.series.title
-            # တကယ်လို့ response['series'] နေရာမှာပဲ နာမည်ပြချင်ရင် အောက်ကအတိုင်း ရေးနိုင်ပါတယ်
-            response['series'] = instance.series.title
-            
-        return response
-
-    def validate(self, data):
-        """
-        Series တစ်ခုထဲမှာ Season Number ထပ်မနေအောင် စစ်ဆေးခြင်း (Custom Validation)
-        """
-        series = data.get('series')
-        season_number = data.get('season_number')
-
-        # အသစ်ဆောက်တဲ့အခါ (သို့) ပြင်ဆင်တဲ့အခါ Season Number တူနေလား စစ်မယ်
-        if Season.objects.filter(series=series, season_number=season_number).exists():
-            # Update လုပ်နေတာဆိုရင် ကိုယ့် ID ကိုယ် ပြန်မစစ်မိအောင် လုပ်ဖို့လိုနိုင်ပါတယ်
-            if not self.instance or self.instance.season_number != season_number:
-                raise serializers.ValidationError(
-                    f"Season {season_number} for this series already exists."
-                )
-        
-        return data
-    
-#episode
-class EpisodeSerializer(serializers.ModelSerializer):
-    # POST/PUT လုပ်တဲ့အခါ ဘယ် Season အောက်ကလဲဆိုတာ သိဖို့ Season ID လက်ခံမယ်
-    season = serializers.PrimaryKeyRelatedField(queryset=Season.objects.all())
-
-    class Meta:
-        model = Episode
-        fields = [
-            'id', 
-            'season', 
-            'episode_number', 
-            'title', 
-            'video_file', 
-            'view_count', 
-            'created_at'
-        ]
-
-    def to_representation(self, instance):
-        """
-        Data ပြန်ထုတ်ပြတဲ့အခါ Season ID အစား Season Number နဲ့ Series Title ကိုပါ ပြသခြင်း
-        """
-        response = super().to_representation(instance)
-        
-        if instance.season:
-            # Season အချက်အလက်
-            response['season_number'] = instance.season.season_number
-            # Series အချက်အလက် (Relationship ကဆင့်တက်ကြည့်တာပါ)
-            response['series_title'] = instance.season.series.title
-            
-            # response['season'] နေရာမှာပဲ စာသားပြချင်ရင်
-            response['season'] = f"Season {instance.season.season_number}"
-            
-        return response
-
-    def validate(self, data):
-        """
-        Season တစ်ခုတည်းမှာ Episode Number ထပ်မနေအောင် စစ်ဆေးခြင်း
-        """
-        season = data.get('season')
-        episode_number = data.get('episode_number')
-
-        # အသစ်ဆောက်ရင် (သို့) နံပါတ်ပြောင်းရင် စစ်မယ်
-        if Episode.objects.filter(season=season, episode_number=episode_number).exists():
-            if not self.instance or self.instance.episode_number != episode_number:
-                raise serializers.ValidationError(
-                    f"Episode {episode_number} already exists in this season."
-                )
-        
-        return data
-    
-# Episode Serializer (အခြေခံ အချက်အလက်ပဲ ပြမယ်)
+# ၁။ Episode Detail Serializer (Episode အချက်အလက်သီးသန့်)
 class EpisodeDetailSerializer(serializers.ModelSerializer):
+    play_url = serializers.ReadOnlyField(source='embed_url')
+
     class Meta:
         model = Episode
-        fields = ['id', 'episode_number', 'title', 'video_file', 'view_count']
+        fields = [
+            'id', 'episode_number', 'title', 
+            'dood_file_code', 'play_url', 'file_size', 
+            'duration', 'view_count', 'created_at'
+        ]
 
-# Season Serializer (Episodes တွေကို တွဲထည့်မယ်)
+# ၂။ Season Detail Serializer (Episodes တွေကိုပါ တစ်ခါတည်း ဆွဲထုတ်မယ်)
 class SeasonDetailSerializer(serializers.ModelSerializer):
     episodes = EpisodeDetailSerializer(many=True, read_only=True)
 
     class Meta:
         model = Season
-        fields = ['id', 'season_number', 'description', 'episodes']
+        fields = ['id', 'season_number', 'description', 'episodes', 'created_at']
 
-# Main Series Serializer (Seasons တွေကို တွဲထည့်မယ်)
-class SeriesDetailSerializer(serializers.ModelSerializer):
-    seasons = SeasonDetailSerializer(many=True, read_only=True) # Nested Relation
+# ၃။ Main Series Serializer (Seasons/Episodes အကုန်လုံး အဆင့်ဆင့် ပြန်ချိတ်မယ်)
+class SeriesSerializer(serializers.ModelSerializer):
+    # Nested Relation: Seasons တွေကို အစုံအလင် ပြန်ပြမယ်
+    seasons = SeasonDetailSerializer(many=True, read_only=True)
     
-    # ကျန်တဲ့ fields တွေကတော့ အရင်အတိုင်းပဲ
+    # POST/PUT အတွက် ID လက်ခံရန်
+    genres = serializers.PrimaryKeyRelatedField(many=True, queryset=Genre.objects.all())
+    country = serializers.PrimaryKeyRelatedField(queryset=Country.objects.all(), allow_null=True)
+    rating = serializers.PrimaryKeyRelatedField(queryset=Rating.objects.all(), allow_null=True)
+    release_year = serializers.PrimaryKeyRelatedField(queryset=Premiere.objects.all(), allow_null=True)
+
     class Meta:
         model = Series
         fields = [
             'id', 'title', 'slug', 'description', 'poster', 
             'country', 'rating', 'release_year', 'genres', 
             'directors', 'casts', 'is_trending', 'view_count', 
-            'seasons', 'created_at'
+            'seasons', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['slug']
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        
+        # Foreign Key Object များကို String နာမည်များအဖြစ် ပြောင်းလဲခြင်း
+        if instance.country: response['country'] = str(instance.country)
+        if instance.rating: response['rating'] = str(instance.rating)
+        if instance.release_year: response['release_year'] = str(instance.release_year)
+        
+        # Many-to-Many Fields ကို Custom ပြုလုပ်ခြင်း
+        response['genres'] = [str(genre) for genre in instance.genres.all()]
+        response['directors'] = DirectorSerializer(instance.directors.all(), many=True, context=self.context).data
+        response['casts'] = CastSerializer(instance.casts.all(), many=True, context=self.context).data
+        
+        return response
+
+# ၄။ တစ်သီးပုဂ္ဂလ CRUD အတွက် Season Serializer
+class SeasonSerializer(serializers.ModelSerializer):
+    series = serializers.PrimaryKeyRelatedField(queryset=Series.objects.all())
+
+    class Meta:
+        model = Season
+        fields = ['id', 'series', 'season_number', 'description', 'created_at']
+
+    def to_representation(self, instance):
+        response = super().to_representation(instance)
+        if instance.series:
+            response['series_name'] = instance.series.title
+            response['series'] = instance.series.title
+        return response
+
+    def validate(self, data):
+        series = data.get('series')
+        season_number = data.get('season_number')
+        if Season.objects.filter(series=series, season_number=season_number).exists():
+            if not self.instance or self.instance.season_number != season_number:
+                raise serializers.ValidationError(f"Season {season_number} for this series already exists.")
+        return data
+
+# ၅။ တစ်သီးပုဂ္ဂလ CRUD အတွက် Episode Serializer
+class EpisodeSerializer(serializers.ModelSerializer):
+    season = serializers.PrimaryKeyRelatedField(queryset=Season.objects.all())
+    play_url = serializers.ReadOnlyField(source='embed_url')
+
+    class Meta:
+        model = Episode
+        fields = [
+            'id', 'season', 'episode_number', 'title', 
+            'dood_file_code', 'play_url', 'file_size', 'duration', 
+            'view_count', 'created_at'
         ]
 
     def to_representation(self, instance):
         response = super().to_representation(instance)
-        # အရင်ရေးထားတဲ့ ID to Name ပြောင်းတဲ့ logic တွေ ဒီမှာ ဆက်သုံးလို့ရပါတယ်
-        if instance.country: response['country'] = str(instance.country)
-        if instance.rating: response['rating'] = str(instance.rating)
-        response['genres'] = [str(g) for g in instance.genres.all()]
+        if instance.season:
+            response['series_title'] = instance.season.series.title
+            response['season_number'] = instance.season.season_number
+            response['season'] = f"Season {instance.season.season_number}"
         return response

@@ -21,15 +21,16 @@ def episode_list(request):
     return paginator.get_paginated_response(serializer.data)
 
 # ၂။ Episode Create
+# ဥပမာ Episode Create View
 @api_view(['POST'])
 def episode_create(request):
-    # Video file ပါဝင်နိုင်သောကြောင့် request.data ကို တိုက်ရိုက်သုံးနိုင်သည်
-    serializer = EpisodeSerializer(data=request.data)
+    # context ထည့်ပေးရန်
+    serializer = EpisodeSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
         serializer.save()
         return Response({
             "status": "success",
-            "message": "Episode created successfully!",
+            "message": "Episode with video uploaded!",
             "data": serializer.data
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -269,12 +269,23 @@ class Episode(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name='episodes')
     episode_number = models.PositiveIntegerField()
     title = models.CharField(max_length=255)
-    video_file = models.FileField(upload_to='series_videos/', null=True, blank=True) # သို့မဟုတ် Video URL
+    
+    # Movie လိုပဲ DoodStream အတွက် ပြောင်းလဲခြင်း
+    dood_file_code = models.CharField(max_length=100, null=True, blank=True)
+    file_size = models.CharField(max_length=100, null=True, blank=True)
+    duration = models.CharField(max_length=100, null=True, blank=True)
+    
     view_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['episode_number']
 
+    @property
+    def embed_url(self):
+        if self.dood_file_code:
+            return f"https://doodstream.com/e/{self.dood_file_code}"
+        return None
+
     def __str__(self):
-        return f"{self.season.series.title} S{self.season.season_number} E{self.episode_number}: {self.title}"
+        return f"{self.season.series.title} S{self.season.season_number} E{self.episode_number}"

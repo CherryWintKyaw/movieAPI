@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from ..models import Series
-from ..serializers import SeriesSerializer, SeriesDetailSerializer
+from ..serializers import SeriesSerializer
 
 from rest_framework.pagination import PageNumberPagination
 
@@ -13,7 +13,7 @@ def series_list(request):
     
     # Pagination object ကို ဆောက်မယ်
     paginator = PageNumberPagination()
-    paginator.page_size = 10 # တစ်မျက်နှာမှာ ပြချင်တဲ့ item အရေအတွက်
+    paginator.page_size = 3 # တစ်မျက်နှာမှာ ပြချင်တဲ့ item အရေအတွက်
     
     # Queryset ကို paginate လုပ်မယ်
     paginated_series = paginator.paginate_queryset(series_queryset, request)
@@ -38,8 +38,9 @@ def series_create(request):
 
 @api_view(['GET'])
 def series_detail(request, pk):
-    series_obj = get_object_or_404(Series, id=pk)
-    serializer = SeriesDetailSerializer(series_obj)
+    series = get_object_or_404(Series, id=pk)
+    # SeriesDetailSerializer အစား SeriesSerializer ကို သုံးပါ
+    serializer = SeriesSerializer(series, context={'request': request}) 
     return Response(serializer.data)
 
 @api_view(['PUT', 'PATCH'])
