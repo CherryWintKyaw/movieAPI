@@ -262,24 +262,20 @@ class FavoriteListSerializer(serializers.ModelSerializer):
         ]
 
 # --- ၂။ Favorite လုပ်တဲ့အခါ (Add/Remove) သုံးဖို့ ---
-class FavoriteActionSerializer(serializers.ModelSerializer):
+# ⚠️ ဒီနေရာမှာ နာမည်ကို "FavoriteSerializer" လို့ပဲ ပေးရပါမယ်
+class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Favorite
         fields = ['id', 'user', 'movie', 'series']
         extra_kwargs = {
-            'user': {'read_only': True} # User ID ကို request ကနေ မယူဘဲ View ထဲကနေ current user ကို ထည့်ပေးမှာမို့လို့ပါ
+            'user': {'read_only': True}
         }
 
     def validate(self, attrs):
         movie = attrs.get('movie')
         series = attrs.get('series')
-
-        # Movie ကော Series ကော နှစ်ခုလုံး မပါရင် error ပေးမယ်
         if not movie and not series:
             raise serializers.ValidationError("Movie သို့မဟုတ် Series တစ်ခုခု ရွေးပေးရပါမယ်။")
-        
-        # နှစ်ခုလုံး တစ်ပြိုင်တည်း ပို့လာရင်လည်း error ပေးမယ်
         if movie and series:
             raise serializers.ValidationError("Movie နဲ့ Series နှစ်ခုလုံး တစ်ပြိုင်တည်း Favorite လုပ်လို့မရပါ။")
-
         return attrs
