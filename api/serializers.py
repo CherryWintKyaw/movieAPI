@@ -94,21 +94,18 @@ class RatingSerializer(serializers.ModelSerializer):
 class MovieVideoSerializer(serializers.ModelSerializer):
     play_url = serializers.ReadOnlyField(source='embed_url')
     
+    # Movie ID ကို လက်ခံဖို့ write_only field ထည့်ပါ
+    movie = serializers.PrimaryKeyRelatedField(queryset=Movie.objects.all(), write_only=True)
+
     class Meta:
         model = MovieVideo
-        # thumbnail_url ကို ဖြုတ်လိုက်ပါပြီ
-        fields = ['id', 'quality', 'play_url', 'file_size', 'duration']
+        fields = ['id', 'movie', 'quality', 'play_url', 'dood_file_code', 'file_size', 'duration']
 
 class MovieSerializer(serializers.ModelSerializer):
-    videos = MovieVideoSerializer(many=True, read_only=True)
-    directors = DirectorSerializer(many=True, read_only=True)
-    casts = CastSerializer(many=True, read_only=True)
+    # read_only=True ပြောင်းလိုက်ပါ (ဒါဆိုရင် create လုပ်တဲ့အခါ video ထည့်စရာမလိုတော့ဘူး)
+    videos = MovieVideoSerializer(many=True, read_only=True) 
     
-    # POST/PUT အတွက် ID လက်ခံဖို့ ထားထားမယ်
-    genres = serializers.PrimaryKeyRelatedField(many=True, queryset=Genre.objects.all())
-    country = serializers.PrimaryKeyRelatedField(queryset=Country.objects.all())
-    rating = serializers.PrimaryKeyRelatedField(queryset=Rating.objects.all())
-    release_year = serializers.PrimaryKeyRelatedField(queryset=Premiere.objects.all())
+    # ... ကျန်တဲ့ directors, casts စတာတွေကတော့ အရင်အတိုင်းပဲ ...
 
     class Meta:
         model = Movie
@@ -118,27 +115,6 @@ class MovieSerializer(serializers.ModelSerializer):
             'directors', 'casts', 'is_trending', 'view_count', 
             'videos', 'created_at'
         ]
-
-    # ✅ ဒီအပိုင်းကို ထည့်ပေးပါ (ဒေတာ ပြန်ထုတ်ပေးတဲ့အခါ နာမည်ပြောင်းပေးတာ)
-    def to_representation(self, instance):
-        response = super().to_representation(instance)
-        # Rating နာမည်ပြောင်းမယ် (မင်းရဲ့ model field name က 'rating' ဖြစ်မယ်လို့ ယူဆပါတယ်)
-        if instance.rating:
-            response['rating'] = str(instance.rating) 
-        
-        # Release Year နာမည်ပြောင်းမယ်
-        if instance.release_year:
-            response['release_year'] = str(instance.release_year)
-            
-        # Country နာမည်ပြောင်းမယ်
-        if instance.country:
-            response['country'] = str(instance.country)
-
-        # Genres ကို နာမည် list အနေနဲ့ ပြောင်းမယ်
-        response['genres'] = [str(genre) for genre in instance.genres.all()]
-        
-        return response
-    
     #series
 
 class SeriesSerializer(serializers.ModelSerializer):
