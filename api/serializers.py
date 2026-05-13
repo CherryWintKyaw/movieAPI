@@ -242,3 +242,44 @@ class EpisodeSerializer(serializers.ModelSerializer):
             response['season_number'] = instance.season.season_number
             response['season'] = f"Season {instance.season.season_number}"
         return response
+    
+
+
+
+# --- ၁။ Favorite List ပြတဲ့အခါ သုံးဖို့ (Nested Data ပါမယ်) ---
+class FavoriteListSerializer(serializers.ModelSerializer):
+    # Movie နဲ့ Series ရဲ့ title နဲ့ poster ကိုပါ တစ်ခါတည်း ပြချင်ရင် သုံးဖို့
+    movie_title = serializers.CharField(source='movie.title', read_only=True)
+    movie_poster = serializers.ImageField(source='movie.poster', read_only=True)
+    series_title = serializers.CharField(source='series.title', read_only=True)
+    series_poster = serializers.ImageField(source='series.poster', read_only=True)
+
+    class Meta:
+        model = Favorite
+        fields = [
+            'id', 'user', 'movie', 'movie_title', 'movie_poster', 
+            'series', 'series_title', 'series_poster', 'created_at'
+        ]
+
+# --- ၂။ Favorite လုပ်တဲ့အခါ (Add/Remove) သုံးဖို့ ---
+class FavoriteActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favorite
+        fields = ['id', 'user', 'movie', 'series']
+        extra_kwargs = {
+            'user': {'read_only': True} # User ID ကို request ကနေ မယူဘဲ View ထဲကနေ current user ကို ထည့်ပေးမှာမို့လို့ပါ
+        }
+
+    def validate(self, attrs):
+        movie = attrs.get('movie')
+        series = attrs.get('series')
+
+        # Movie ကော Series ကော နှစ်ခုလုံး မပါရင် error ပေးမယ်
+        if not movie and not series:
+            raise serializers.ValidationError("Movie သို့မဟုတ် Series တစ်ခုခု ရွေးပေးရပါမယ်။")
+        
+        # နှစ်ခုလုံး တစ်ပြိုင်တည်း ပို့လာရင်လည်း error ပေးမယ်
+        if movie and series:
+            raise serializers.ValidationError("Movie နဲ့ Series နှစ်ခုလုံး တစ်ပြိုင်တည်း Favorite လုပ်လို့မရပါ။")
+
+        return attrs

@@ -9,6 +9,7 @@ from telethon.sessions import StringSession
 from asgiref.sync import sync_to_async
 from django.dispatch import receiver
 from django.db.models.signals import post_save
+from django.contrib.auth.models import User
 
 class HeroSection(models.Model):
     # ID ကို UUID ပြောင်းလဲခြင်း
@@ -289,3 +290,28 @@ class Episode(models.Model):
 
     def __str__(self):
         return f"{self.season.series.title} S{self.season.season_number} E{self.episode_number}"
+    
+
+
+
+class Favorite(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    # ဘယ် User က သိမ်းတာလဲ
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
+    
+    # Movie ကို သိမ်းရင် movie field မှာ data ရှိမယ်၊ Series ဆိုရင် series field မှာ ရှိမယ်
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, null=True, blank=True, related_name='favorited_by')
+    series = models.ForeignKey(Series, on_delete=models.CASCADE, null=True, blank=True, related_name='favorited_by')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Favorite"
+        verbose_name_plural = "Favorites"
+        # User တစ်ယောက်က ကားတစ်ကားတည်းကို နှစ်ခါ Favorite လုပ်လို့မရအောင် ကန့်သတ်ခြင်း
+        unique_together = ('user', 'movie', 'series')
+
+    def __str__(self):
+        item = self.movie.title if self.movie else self.series.title
+        return f"{self.user.username} favorited {item}"
