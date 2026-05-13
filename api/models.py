@@ -308,3 +308,23 @@ class Favorite(models.Model):
     class Meta:
         # User တစ်ယောက်တည်းက Movie တစ်ခုတည်းကို နှစ်ခါ favorite လုပ်လို့မရအောင် စစ်ချင်ရင်
         unique_together = ('user', 'movie', 'series')
+
+
+
+
+class FCMDevice(models.Model):
+    # User နေရာမှာ settings.AUTH_USER_MODEL ကို ပြောင်းထည့်ပါ
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+    fcm_token = models.TextField(unique=True)
+    device_type = models.CharField(max_length=50, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        # user က null ဖြစ်နိုင်လို့ အောက်ပါအတိုင်း စစ်တာ ပိုစိတ်ချရပါတယ်
+        username = self.user.username if self.user else "Guest"
+        return f"{username} - {self.device_type}"

@@ -89,8 +89,6 @@ class RatingSerializer(serializers.ModelSerializer):
         fields = ['id', 'rating']
 
 
-# api/serializers.py
-
 class MovieVideoSerializer(serializers.ModelSerializer):
     play_url = serializers.ReadOnlyField(source='embed_url')
     
@@ -139,9 +137,6 @@ class MovieSerializer(serializers.ModelSerializer):
         
         return response
     #series
-
-from rest_framework import serializers
-from .models import Series, Season, Episode, Genre, Country, Rating, Premiere
 
 # ၁။ Episode Detail Serializer (Episode အချက်အလက်သီးသန့်)
 class EpisodeDetailSerializer(serializers.ModelSerializer):
@@ -279,3 +274,14 @@ class FavoriteSerializer(serializers.ModelSerializer):
         if movie and series:
             raise serializers.ValidationError("Movie နဲ့ Series နှစ်ခုလုံး တစ်ပြိုင်တည်း Favorite လုပ်လို့မရပါ။")
         return attrs
+    
+class FCMDeviceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FCMDevice
+        fields = ['id', 'fcm_token', 'device_type', 'created_at']
+        extra_kwargs = {
+            # Token ရှိပြီးသားဆိုရင် Serializer ကနေ Error မပြအောင် validator ကို ပိတ်ထားတာပါ
+            'fcm_token': {'validators': []} 
+        }
+
+    # Serializer ထဲမှာ create method ထပ်ရေးစရာ မလိုတော့ဘူး (View ထဲမှာ ရေးမှာမို့လို့)

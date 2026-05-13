@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import banner_view, country_view, genre_view, director_view, cast_view, premiere_view, rating_view, movie_view, series_view,season_view,episode_view,movie_video,favorite_view
+from .views import banner_view, country_view, genre_view, director_view, cast_view, premiere_view, rating_view, movie_view, series_view,season_view,episode_view,movie_video,favorite_view,fcm_view
 
 urlpatterns = [
     path('banner_list/', banner_view.banner_list, name='banner_list'),
@@ -107,6 +107,8 @@ urlpatterns = [
 
 
     path('favorites/', favorite_view.favorite_manager, name='favorite-manager'),
+
+    path('fcm-devices/', fcm_view.register_fcm_token, name='register-fcm-token'),
 
 
 ]
