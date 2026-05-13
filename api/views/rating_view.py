@@ -5,18 +5,34 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from ..models import Rating
 from ..serializers import RatingSerializer
+from django.db.models import Q, CharField
 
 # 1. Rating List with Pagination
 @api_view(['GET'])
 def rating_list(request):
     """
-    Rating တန်ဖိုးအားလုံးကို Pagination ဖြင့် ပြသခြင်း (အမြင့်ဆုံးကနေ အနိမ့်ဆုံးစဉ်ထားသည်)
+    Rating တန်ဖိုးများကို ID (UUID) သို့မဟုတ် Rating Number ဖြင့် 
+    Search လုပ်နိုင်ပြီး Pagination ဖြင့် ပြသခြင်း
     """
+    # 1. Rating အားလုံးကို အမြင့်ဆုံးကနေ စီပြီးယူမယ်
     ratings = Rating.objects.all().order_by('-rating')
     
+    # 2. Search Logic
+    search_query = request.query_params.get('search', None)
+    if search_query:
+        # Rating (Decimal) ကို စာသား (CharField) အဖြစ် ပြောင်းပြီးမှ ရှာမယ်
+        ratings = ratings.annotate(
+            rating_str=Cast('rating', CharField())
+        ).filter(
+            Q(id__icontains=search_query) |      # UUID ID ကို ရှာမယ်
+            Q(rating_str__icontains=search_query) # Rating နံပါတ်ကို စာသားအဖြစ် ရှာမယ်
+        ).distinct()
+
+    # 3. Pagination သတ်မှတ်မယ်
     paginator = PageNumberPagination()
     paginator.page_size = 10
     
+    # 4. Result ကို Serialize လုပ်ပြီး ပြန်ပေးမယ်
     result_page = paginator.paginate_queryset(ratings, request)
     serializer = RatingSerializer(result_page, many=True)
     
