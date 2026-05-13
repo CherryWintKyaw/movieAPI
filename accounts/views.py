@@ -11,6 +11,8 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import Group
 from .serializers import GroupSerializer
+from django.db.models import Q, CharField
+from django.db.models.functions import Cast
 
 def get_tokens_for_user(user):
     """
@@ -132,14 +134,32 @@ def logout_user(request):
 @permission_classes([IsAdminUser])
 def get_all_users(request):
     """
-    User အားလုံးကို Pagination ဖြင့် ပြသခြင်း (Groups ပါဝင်သည်)
+    User အားလုံးကို ID, Email, Username, Role နှင့် Premium Status 
+    တို့ဖြင့် Search လုပ်နိုင်ပြီး Pagination ဖြင့် ပြသခြင်း
     """
-    # prefetch_related သုံးခြင်းဖြင့် Database query ပိုနည်းပြီး ပိုမြန်စေသည်
+    # 1. Queryset (Groups နှင့် Permissions ပါ တစ်ခါတည်း ဆွဲယူထားမည်)
     users = User.objects.all().prefetch_related('groups', 'user_permissions').order_by('-date_joined')
     
+    # 2. Search Logic
+    search_query = request.query_params.get('search', None)
+    if search_query:
+        # Boolean နှင့် Choices များကို စာသားပြောင်းပြီး ရှာနိုင်အောင် Annotation လုပ်မည်
+        users = users.annotate(
+            is_premium_str=Cast('is_premium', CharField()),
+            id_str=Cast('id', CharField())
+        ).filter(
+            Q(id_str__icontains=search_query) |       # UUID ID
+            Q(email__icontains=search_query) |        # User Email
+            Q(username__icontains=search_query) |     # Username
+            Q(role__icontains=search_query) |         # Role (customer/owner)
+            Q(is_premium_str__icontains=search_query) # Premium (true/false)
+        ).distinct()
+
+    # 3. Pagination သတ်မှတ်မယ်
     paginator = PageNumberPagination()
-    paginator.page_size = 10 # တစ်မျက်နှာမှာ user ၁၀ ယောက်စီ ပြမယ် (ဥပမာ)
+    paginator.page_size = 10
     
+    # 4. Result ထုတ်မယ်
     result_page = paginator.paginate_queryset(users, request)
     serializer = UserListSerializer(result_page, many=True)
     
@@ -260,16 +280,70 @@ def delete_all_users(request):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def get_all_permissions(request):
-    """Django System တစ်ခုလုံးရှိ Permissions စာရင်းကို ပြရန်"""
-    perms = Permission.objects.all().values('id', 'name', 'codename')
-    return Response(perms)
+    """
+    Django System ရှိ Permissions အားလုံးကို Name သို့မဟုတ် Codename ဖြင့် 
+    Search လုပ်နိုင်ပြီး Pagination ဖြင့် ပြသခြင်း
+    """
+    # 1. Permission အားလုံးကို ယူမယ်
+    perms = Permission.objects.all().order_by('content_type__app_label', 'codename')
+
+    # 2. Search Logic (Name သို့မဟုတ် Codename ကို ရှာမယ်)
+    search_query = request.query_params.get('search', None)
+    if search_query:
+        perms = perms.filter(
+            Q(name__icontains=search_query) |       # ဥပမာ - "Can add movie"
+            Q(codename__icontains=search_query)     # ဥပမာ - "add_movie"
+        ).distinct()
+
+    # 3. Pagination (Permissions က များနိုင်လို့ Pagination ထည့်သင့်ပါတယ်)
+    paginator = PageNumberPagination()
+    paginator.page_size = 20 # တစ်မျက်နှာ ၂၀ ခုစီပြမယ်
+    
+    result_page = paginator.paginate_queryset(perms, request)
+    
+    # Values ကိုသုံးထားရင် Serializer မလိုဘဲ တိုက်ရိုက် Response ပေးလို့ရပါတယ်
+    # ဒါပေမဲ့ Pagination သုံးရင်တော့ serializer ကဲ့သို့ data structure ပြန်ပေးဖို့လိုပါတယ်
+    data = [{
+        'id': p.id,
+        'name': p.name,
+        'codename': p.codename,
+        'content_type': str(p.content_type)
+    } for p in result_page]
+
+    return paginator.get_paginated_response(data)
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def get_all_groups(request):
-    """System ထဲမှာရှိတဲ့ Groups စာရင်းကို ID နှင့် Name ပြရန်"""
-    groups = Group.objects.all().values('id', 'name')
-    return Response(groups)
+    """
+    System ထဲရှိ Groups (Roles) များကို Name သို့မဟုတ် ID ဖြင့် 
+    Search လုပ်နိုင်ပြီး Pagination ဖြင့် ပြသခြင်း
+    """
+    # 1. Group အားလုံးကို အမည်အလိုက် စီပြီးယူမယ်
+    groups_queryset = Group.objects.all().order_by('name')
+
+    # 2. Search Logic (Group Name သို့မဟုတ် ID ကို ရှာမယ်)
+    search_query = request.query_params.get('search', None)
+    if search_query:
+        groups_queryset = groups_queryset.filter(
+            Q(name__icontains=search_query) |
+            Q(id__icontains=search_query)
+        ).distinct()
+
+    # 3. Pagination သတ်မှတ်မယ်
+    paginator = PageNumberPagination()
+    paginator.page_size = 10
+    
+    result_page = paginator.paginate_queryset(groups_queryset, request)
+    
+    # Data Format ကို စနစ်တကျ ပြန်ထုတ်မယ်
+    data = [{
+        'id': g.id,
+        'name': g.name,
+        'permissions_count': g.permissions.count() # Group ထဲမှာ permission ဘယ်နှစ်ခုရှိလဲပါ ထည့်ပေးထားတယ်
+    } for g in result_page]
+
+    return paginator.get_paginated_response(data)
 
 # --- 1. Create Group ---
 @api_view(['POST'])

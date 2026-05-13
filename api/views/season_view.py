@@ -9,11 +9,31 @@ from ..serializers import SeasonSerializer
 # ၁။ Season List (Pagination ပါဝင်သည်)
 @api_view(['GET'])
 def season_list(request):
-    seasons = Season.objects.all().order_by('series', 'season_number')
+    """
+    Season များကို Series Title, Season Number သို့မဟုတ် Description ဖြင့် 
+    Search လုပ်နိုင်ပြီး Pagination ဖြင့် ပြသခြင်း
+    """
+    search_query = request.query_params.get('search', None)
     
+    # 1. Performance ကောင်းအောင် Series data ကို တစ်ခါတည်း ဆွဲယူထားမယ်
+    seasons = Season.objects.select_related('series').all().order_by('series__title', 'season_number')
+
+    if search_query:
+        # 2. Season Number (Integer) ကို စာသားပြောင်းပြီး ရှာနိုင်အောင် လုပ်မယ်
+        seasons = seasons.annotate(
+            season_num_str=DbCast('season_number', CharField())
+        ).filter(
+            Q(id__icontains=search_query) |                # UUID ID
+            Q(series__title__icontains=search_query) |     # Series Title (e.g. Money Heist)
+            Q(season_num_str__icontains=search_query) |    # Season Number (e.g. 1, 2)
+            Q(description__icontains=search_query)         # Season Description
+        ).distinct()
+
+    # 3. Pagination သတ်မှတ်မယ်
     paginator = PageNumberPagination()
     paginator.page_size = 2
     
+    # 4. Result ထုတ်မယ်
     paginated_seasons = paginator.paginate_queryset(seasons, request)
     serializer = SeasonSerializer(paginated_seasons, many=True)
     

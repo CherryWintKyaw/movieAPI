@@ -5,16 +5,46 @@ from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from ..models import Episode
 from ..serializers import EpisodeSerializer
+from django.db.models import Q, CharField
+from django.db.models.functions import Cast as DbCast
 
 # ၁။ Episode List (Pagination ပါဝင်သည်)
 @api_view(['GET'])
 def episode_list(request):
-    # Series, Season, Episode အစဉ်လိုက် စီပေးထားပါတယ်
-    episodes = Episode.objects.all().order_by('season__series', 'season', 'episode_number')
+    """
+    Episode များကို Series Title, Season Number, Episode Number, Title, 
+    Dood File Code သို့မဟုတ် Duration တို့ဖြင့် Search လုပ်နိုင်ခြင်း
+    """
+    search_query = request.query_params.get('search', None)
     
+    # 1. Performance ကောင်းအောင် Season နဲ့ Series data ကို တစ်ခါတည်း ဆွဲယူထားမယ်
+    episodes = Episode.objects.select_related('season__series').all().order_by(
+        'season__series__title', 
+        'season__season_number', 
+        'episode_number'
+    )
+
+    if search_query:
+        # 2. Episode Number နဲ့ Season Number (Integer) တွေကို စာသားပြောင်းပြီး ရှာမယ်
+        episodes = episodes.annotate(
+            ep_num_str=DbCast('episode_number', CharField()),
+            sn_num_str=DbCast('season__season_number', CharField())
+        ).filter(
+            Q(id__icontains=search_query) |                   # UUID ID
+            Q(title__icontains=search_query) |                # Episode Title
+            Q(season__series__title__icontains=search_query)| # Series Title (e.g. Money Heist)
+            Q(sn_num_str__icontains=search_query) |           # Season Number (e.g. 1)
+            Q(ep_num_str__icontains=search_query) |           # Episode Number (e.g. 12)
+            Q(dood_file_code__icontains=search_query) |       # DoodStream Code
+            Q(duration__icontains=search_query) |             # 45m စသည်ဖြင့်
+            Q(file_size__icontains=search_query)              # 300MB စသည်ဖြင့်
+        ).distinct()
+
+    # 3. Pagination သတ်မှတ်မယ်
     paginator = PageNumberPagination()
     paginator.page_size = 3
     
+    # 4. Result ထုတ်မယ်
     paginated_episodes = paginator.paginate_queryset(episodes, request)
     serializer = EpisodeSerializer(paginated_episodes, many=True)
     

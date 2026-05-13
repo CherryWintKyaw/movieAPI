@@ -5,18 +5,35 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from ..models import Premiere
 from ..serializers import PremiereSerializer
+from django.db.models import Q, CharField
+from django.db.models.functions import Cast
 
 # 1. Premiere List with Pagination
 @api_view(['GET'])
 def premiere_list(request):
     """
-    ခုနှစ်စာရင်းအားလုံးကို Pagination ဖြင့် ပြသခြင်း (အသစ်ဆုံးကို အပေါ်ကပြမည်)
+    ထွက်ရှိသည့် ခုနှစ်များကို ID (UUID) သို့မဟုတ် Year (Integer) ဖြင့် 
+    Search လုပ်နိုင်ပြီး Pagination ဖြင့် ပြသခြင်း
     """
+    # 1. ခုနှစ်အားလုံးကို အသစ်ဆုံးကနေ စီပြီးယူမယ်
     years = Premiere.objects.all().order_by('-year')
     
+    # 2. Search Logic
+    search_query = request.query_params.get('search', None)
+    if search_query:
+        # Year (Integer) ကို စာသား (CharField) အဖြစ် ပြောင်းပြီးမှ ရှာမယ်
+        years = years.annotate(
+            year_str=Cast('year', CharField())
+        ).filter(
+            Q(id__icontains=search_query) |      # UUID ID ကို ရှာမယ်
+            Q(year_str__icontains=search_query)  # ခုနှစ် (ဥပမာ - 2024) ကို စာသားအဖြစ် ရှာမယ်
+        ).distinct()
+
+    # 3. Pagination သတ်မှတ်မယ်
     paginator = PageNumberPagination()
     paginator.page_size = 10
     
+    # 4. Result ကို Serialize လုပ်ပြီး ပြန်ပေးမယ်
     result_page = paginator.paginate_queryset(years, request)
     serializer = PremiereSerializer(result_page, many=True)
     
